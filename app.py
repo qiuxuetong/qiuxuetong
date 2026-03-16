@@ -4,9 +4,9 @@ import urllib.parse
 import re
 
 # 1. 配置 Gemini (Gemini 1.5 Flash 是目前的标准稳定版)
-API_KEY = "AIzaSyAO34xj5H-cGARDWleYIDLJ23etQKE_IDc".strip()
+API_KEY = "AIzaSyBIrXHLyx2CtJXqEYUSWxGoX-DBjlDhaM4".strip()
 genai.configure(api_key=API_KEY)
-model = genai.GenerativeModel('gemini-2.5-flash')
+model = genai.GenerativeModel('gemini-1.5-flash')
 
 st.set_page_config(page_title="导师套磁专家", layout="wide")
 st.title("🎓 博士申请导师匹配系统")
