@@ -7,7 +7,7 @@ import re
 # 这样写才是最安全的，完全避开泄露风险
 API_KEY = st.secrets["GOOGLE_API_KEY"]
 genai.configure(api_key=API_KEY)
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel('gemini-2.5-flash')
 
 st.set_page_config(page_title="导师套磁专家", layout="wide")
 st.title("🎓 博士申请导师匹配系统")
