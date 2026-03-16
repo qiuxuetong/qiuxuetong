@@ -4,10 +4,14 @@ import urllib.parse
 import re
 
 # 1. 配置 Gemini (Gemini 1.5 Flash 是目前的标准稳定版)
-# 这样写才是最安全的，完全避开泄露风险
-API_KEY = st.secrets["GOOGLE_API_KEY"]
-genai.configure(api_key=API_KEY)
+# 配置 API
+genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+
+# 设置模型 (根据你之前的成功测试，确保是 gemini-2.5-flash)
 model = genai.GenerativeModel('gemini-2.5-flash')
+
+# 【新增调试行】用来在网页上确认钥匙是否生效
+st.write(f"🔑 当前系统使用的 Key 开头是: {st.secrets['GOOGLE_API_KEY'][:4]}")
 
 st.set_page_config(page_title="导师套磁专家", layout="wide")
 st.title("🎓 博士申请导师匹配系统")
