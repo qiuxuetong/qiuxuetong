@@ -4,7 +4,8 @@ import urllib.parse
 import re
 
 # 1. 配置 Gemini (Gemini 2.5 Flash 是目前的标准稳定版)
-API_KEY = "AIzaSyBIrXHLyx2CtJXqEYUSWxGoX-DBjlDhaM4".strip()
+# 这样写才是最安全的，完全避开泄露风险
+API_KEY = st.secrets["GOOGLE_API_KEY"]
 genai.configure(api_key=API_KEY)
 model = genai.GenerativeModel('gemini-2.5-flash')
 
