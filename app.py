@@ -1,132 +1,199 @@
-import streamlit as st
-import datetime
+from fastapi import FastAPI, Request, Form
+from fastapi.responses import HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
+import sqlite3
 import json
-import os
-import smtplib
-from email.mime.text import MIMEText
 
-DATA_FILE = "tasks.json"
+app = FastAPI()
 
-# 初始化
-if not os.path.exists(DATA_FILE):
-    with open(DATA_FILE, "w") as f:
-        json.dump([], f)
-
-def load_tasks():
-    with open(DATA_FILE, "r") as f:
-        return json.load(f)
-
-def save_tasks(tasks):
-    with open(DATA_FILE, "w") as f:
-        json.dump(tasks, f, indent=4)
+# 允许浏览器访问
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # =========================
-# 📧 邮件发送函数
+# 📦 数据库初始化
 # =========================
-def send_email(to_email, subject, content):
-    try:
-        msg = MIMEText(content)
-        msg['Subject'] = subject
-        msg['From'] = "your@email.com"
-        msg['To'] = to_email
+conn = sqlite3.connect("study.db", check_same_thread=False)
+cursor = conn.cursor()
 
-        with smtplib.SMTP('smtp.gmail.com', 587) as server:
-            server.starttls()
-            server.login("your@email.com", "your_app_password")
-            server.send_message(msg)
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE,
+    password TEXT
+)
+""")
 
-        return True
-    except Exception as e:
-        return str(e)
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS plans (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    country TEXT,
+    content TEXT
+)
+""")
 
-# =========================
-# 🌍 UI
-# =========================
-st.title("🌍 全球48个月规划系统（升级版）")
-
-# =========================
-# ➕ 添加任务
-# =========================
-st.header("➕ 添加任务")
-
-with st.form("task_form"):
-    country = st.selectbox("国家", ["Canada", "Germany", "Netherlands", "USA", "Australia"])
-    task_name = st.text_input("任务")
-    date = st.date_input("截止日期")
-    task_type = st.selectbox("类型", ["normal", "email"])
-    email = st.text_input("邮箱（邮件任务用）")
-
-    submitted = st.form_submit_button("添加")
-
-    if submitted and task_name:
-        tasks = load_tasks()
-        tasks.append({
-            "country": country,
-            "task": task_name,
-            "date": str(date),
-            "status": "pending",
-            "type": task_type,
-            "email": email
-        })
-        save_tasks(tasks)
-        st.success("✅ 添加成功")
+conn.commit()
 
 # =========================
-# 📊 显示任务
+# 🧠 推荐算法
 # =========================
-st.header("📊 当前任务")
+def recommend_country(education, budget, goal):
+    scores = {"Canada":0, "Germany":0, "Netherlands":0, "USA":0}
 
-tasks = load_tasks()
-today = datetime.date.today()
+    if goal == "immigration":
+        scores["Canada"] += 3
+        scores["Germany"] += 2
 
-for i, t in enumerate(tasks):
-    task_date = datetime.datetime.strptime(t["date"], "%Y-%m-%d").date()
-    days_left = (task_date - today).days
-
-    st.divider()
-    st.subheader(f"{t['country']} - {t['task']}")
-
-    # ⏰ 提醒
-    if days_left <= 0:
-        st.error(f"❗ 已到期：{t['date']}")
-    elif days_left <= 2:
-        st.warning(f"⚠️ 即将到期：{t['date']}")
+    if budget == "low":
+        scores["Germany"] += 3
     else:
-        st.write(f"📅 截止日期：{t['date']}")
+        scores["USA"] += 2
 
-    # 状态
-    new_status = st.selectbox(
-        "状态",
-        ["pending", "doing", "done"],
-        index=["pending", "doing", "done"].index(t["status"]),
-        key=f"status_{i}"
+    if education == "bachelor":
+        scores["Canada"] += 2
+
+    return max(scores, key=scores.get)
+
+# =========================
+# 📅 48个月规划
+# =========================
+def generate_plan(country):
+    return [
+        "0-6月：申请学校 + 套磁",
+        "6-12月：签证 + 入学",
+        "12-24月：实习 + 本地经验",
+        "24-36月：找工作",
+        "36-48月：申请永居"
+    ]
+
+# =========================
+# 🌐 前端页面
+# =========================
+@app.get("/", response_class=HTMLResponse)
+def home():
+    return """
+    <html>
+    <head>
+        <title>Study OS</title>
+    </head>
+    <body style="font-family:Arial; padding:40px;">
+        <h1>🌍 全球留学系统</h1>
+
+        <h2>注册</h2>
+        <form action="/register" method="post">
+            用户名: <input name="username"><br>
+            密码: <input name="password" type="password"><br>
+            <button type="submit">注册</button>
+        </form>
+
+        <h2>登录</h2>
+        <form action="/login" method="post">
+            用户名: <input name="username"><br>
+            密码: <input name="password" type="password"><br>
+            <button type="submit">登录</button>
+        </form>
+
+        <h2>生成留学路径</h2>
+        <form action="/generate" method="post">
+            用户ID: <input name="user_id"><br>
+
+            学历:
+            <select name="education">
+                <option value="bachelor">本科</option>
+                <option value="master">硕士</option>
+            </select><br>
+
+            预算:
+            <select name="budget">
+                <option value="low">低</option>
+                <option value="high">高</option>
+            </select><br>
+
+            目标:
+            <select name="goal">
+                <option value="immigration">移民</option>
+                <option value="career">就业</option>
+            </select><br>
+
+            <button type="submit">生成方案</button>
+        </form>
+
+        <h2>查看我的规划</h2>
+        <form action="/plans" method="post">
+            用户ID: <input name="user_id"><br>
+            <button type="submit">查看</button>
+        </form>
+
+    </body>
+    </html>
+    """
+
+# =========================
+# 👤 注册
+# =========================
+@app.post("/register")
+def register(username: str = Form(...), password: str = Form(...)):
+    try:
+        cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
+        conn.commit()
+        return f"注册成功！"
+    except:
+        return "用户已存在"
+
+# =========================
+# 🔐 登录
+# =========================
+@app.post("/login")
+def login(username: str = Form(...), password: str = Form(...)):
+    cursor.execute("SELECT * FROM users WHERE username=? AND password=?", (username, password))
+    user = cursor.fetchone()
+
+    if user:
+        return f"登录成功！你的用户ID是：{user[0]}"
+    else:
+        return "登录失败"
+
+# =========================
+# 🎯 生成计划
+# =========================
+@app.post("/generate")
+def generate(
+    user_id: int = Form(...),
+    education: str = Form(...),
+    budget: str = Form(...),
+    goal: str = Form(...)
+):
+    country = recommend_country(education, budget, goal)
+    plan = generate_plan(country)
+
+    cursor.execute(
+        "INSERT INTO plans (user_id, country, content) VALUES (?, ?, ?)",
+        (user_id, country, json.dumps(plan))
     )
+    conn.commit()
 
-    if new_status != t["status"]:
-        tasks[i]["status"] = new_status
-        save_tasks(tasks)
-
-    # 📧 邮件功能
-    if t["type"] == "email" and t["email"]:
-        if st.button(f"📧 发送跟进邮件 #{i}"):
-            result = send_email(
-                t["email"],
-                "Follow-up",
-                f"Dear Professor,\n\nI would like to follow up on my previous email regarding {t['task']}.\n\nBest regards"
-            )
-            if result == True:
-                st.success("邮件发送成功")
-            else:
-                st.error(result)
+    return f"推荐国家：{country}<br>规划：<br>" + "<br>".join(plan)
 
 # =========================
-# 🗑️ 删除
+# 📊 查看规划
 # =========================
-st.header("🗑️ 删除任务")
+@app.post("/plans")
+def get_plans(user_id: int = Form(...)):
+    cursor.execute("SELECT country, content FROM plans WHERE user_id=?", (user_id,))
+    rows = cursor.fetchall()
 
-if len(tasks) > 0:
-    delete_index = st.number_input("输入编号", 0, len(tasks)-1)
-    if st.button("删除"):
-        tasks.pop(delete_index)
-        save_tasks(tasks)
-        st.success("删除成功")
+    result = "<h2>你的规划</h2>"
+
+    for r in rows:
+        plan = json.loads(r[1])
+        result += f"<h3>{r[0]}</h3>"
+        result += "<br>".join(plan)
+        result += "<hr>"
+
+    return result
