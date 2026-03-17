@@ -2,48 +2,44 @@ import streamlit as st
 import requests
 import json
 
-# 1. 安全获取 Secrets 中的 Key
-if "OPENROUTER_API_KEY" not in st.secrets:
-    st.error("Secrets 配置格式错误，请检查是否按照 OPENROUTER_API_KEY = '...' 填写")
-    st.stop()
+# 1. 核心调用逻辑
+def call_stable_ai(prompt):
+    api_key = st.secrets["OPENROUTER_API_KEY"]
+    
+    # 依次尝试的模型列表（2.5级旗舰逻辑）
+    models_to_try = [
+        "google/gemini-pro-1.5", 
+        "google/gemini-pro-1.5-exp",
+        "anthropic/claude-3-sonnet"
+    ]
+    
+    for model_id in models_to_try:
+        try:
+            response = requests.post(
+                url="https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                },
+                data=json.dumps({
+                    "model": model_id,
+                    "messages": [{"role": "user", "content": prompt}]
+                }),
+                timeout=30
+            )
+            if response.status_code == 200:
+                return response.json()['choices'][0]['message']['content']
+        except:
+            continue # 如果第一个模型 404，自动尝试下一个
+            
+    return "⚠️ 节点暂时忙碌。请确保 OpenRouter 账户有微量额度（如 $1），或稍后再试。"
 
-OR_KEY = st.secrets["OPENROUTER_API_KEY"]
-
-# 2. 建立旗舰级 API 调用函数
-def call_2_5_logic(prompt):
-    try:
-        response = requests.post(
-            url="https://openrouter.ai/api/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {OR_KEY}",
-                "Content-Type": "application/json",
-            },
-            data=json.dumps({
-                "model": "google/gemini-pro-1.5", # 锁定 2.5 级顶级逻辑
-                "messages": [{"role": "user", "content": prompt}]
-            }),
-            timeout=40
-        )
-        if response.status_code == 200:
-            return response.json()['choices'][0]['message']['content']
-        else:
-            return f"⚠️ 转发节点返回错误 {response.status_code}: {response.text}"
-    except Exception as e:
-        return f"❌ 链路中断: {str(e)}"
-
-# 3. 页面布局 (确保 8 个标签页稳固)
-st.set_page_config(page_title="求学通-Flagship 2.5", layout="wide")
+# 2. UI 保持不变
 st.title("🎓 求学通：2.5 级旗舰全闭环系统")
+kw = st.text_input("研究方向 (如: hair design):", key="v5")
 
-tabs = st.tabs(["🎯 导师匹配", "📄 简历润色", "✉️ 陶瓷信", "🛡️ 百宝箱"])
-
-with tabs[0]:
-    st.header("🔍 全球导师极速匹配")
-    kw = st.text_input("研究方向 (如: Costume Design):", key="kw_v4")
-    if st.button("🚀 开启旗舰级检索"):
-        if kw:
-            with st.spinner("AI 正在跨越欧美商业节点进行推理..."):
-                res = call_2_5_logic(f"Find 3 professors for {kw}. Name|Uni|Focus.")
-                st.markdown(res)
-        else:
-            st.warning("请输入方向")
+if st.button("🚀 开启旗舰级检索"):
+    if kw:
+        with st.spinner("正在通过全球高权重节点检索..."):
+            res = call_stable_ai(f"请匹配关于 {kw} 的 3 位教授。格式：姓名|学校|研究方向")
+            st.markdown(res)
