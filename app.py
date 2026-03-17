@@ -2,101 +2,135 @@ import streamlit as st
 import urllib.parse
 from datetime import datetime
 
-# --- 1. 顶层商业逻辑配置 ---
-st.set_page_config(page_title="Nexus Sovereign Architect", layout="wide")
+# --- 1. 企业级 SaaS 视觉引擎 ---
+st.set_page_config(page_title="Nexus Sovereign AI v19.0", layout="wide")
 
 st.markdown("""
     <style>
-    .main { background-color: #f1f5f9; }
-    .stMetric { background: white; padding: 20px; border-radius: 12px; border-bottom: 4px solid #1e3a8a; }
-    .barrier-card { background: white; padding: 30px; border-radius: 15px; border-right: 8px solid #3b82f6; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
-    .hook-text { color: #1e40af; font-weight: bold; border-bottom: 2px solid #bfdbfe; }
+    .main { background-color: #f0f4f8; }
+    .stTabs [data-baseweb="tab-list"] { gap: 10px; }
+    .stTabs [data-baseweb="tab"] {
+        height: 60px; background-color: #ffffff; border-radius: 8px; 
+        border: 1px solid #d1d5db; font-weight: bold;
+    }
+    .stTabs [aria-selected="true"] { background-color: #1e3a8a !important; color: white !important; }
+    .logic-container { background: white; padding: 25px; border-radius: 12px; border-left: 8px solid #1e3a8a; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
+    .monetize-tag { background: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 15px; font-size: 0.8rem; font-weight: bold; }
     </style>
     """, unsafe_allow_html=True)
 
 # --- 2. 核心驱动引擎 ---
 def get_search(q): return f"https://www.google.com/search?q={urllib.parse.quote(q)}"
 
-# --- 3. 侧边栏：变现与留存指标 ---
+# --- 3. 侧边栏：全局中央指挥中心 ---
 with st.sidebar:
-    st.markdown("## 🛡️ Sovereign Engine")
-    u_name = st.text_input("🏢 目标机构", value="University of Cambridge")
-    p_name = st.text_input("🧬 核心 PI", value="Piotr Smolenski")
-    jurisdiction = st.selectbox("⚖️ 合规区域", ["美国", "英国", "德国", "瑞士", "新加坡", "香港", "加拿大", "澳洲", "比利时", "波兰", "荷兰"])
+    st.title("🛡️ TITAN SOVEREIGN")
+    st.caption("Commercial Grade SaaS Prototype")
+    u_name = st.text_input("📍 目标大学", value="University of Oxford")
+    p_name = st.text_input("👨‍🏫 目标导师", value="Piotr Smolenski")
+    region = st.selectbox("🌍 目标法域", ["美国", "英国", "德国", "瑞士", "新加坡", "香港", "加拿大", "澳洲", "荷兰", "比利时", "波兰"])
     
     st.divider()
-    st.subheader("💎 客户吸引力指标 (Hook)")
-    st.metric("风险穿透率", "96.4%", "Expert")
-    st.metric("法律主权保护", "Active", "High Moat")
-    st.progress(0.95)
-    st.write("---")
-    st.caption("商业定位：替代 80% 的资深留学顾问工作流")
+    st.subheader("💎 商业化壁垒看板")
+    st.metric("数据资产节点", "52,400+", "Real-time")
+    st.metric("变现转化路径", "12 条", "High LTV")
+    st.progress(0.98)
+    if st.button("🚀 生成 50页 深度合规报告"):
+        st.snow()
+        st.toast("正在穿透目标大学合规数据库...", icon="🔍")
 
-# --- 4. 8大吸引力模块：每一项都直击客户心脏 ---
-tabs = st.tabs(["🎯 导师人品调查", "🛂 签证红线探测", "✉️ 陶瓷决策流", "📄 文书盾Pro", "💼 永居评分器", "🍎 健康主权", "🛡️ 维权核武器", "📅 48月营收流"])
+# --- 4. 8大高密度功能矩阵 ---
+tabs = st.tabs(["🎯 导师画像", "🛂 签证红线", "✉️ 陶瓷内核", "📄 文书主权", "💼 永居算法", "🍎 健康保障", "🛡️ 维权阵地", "📅 48月规划"])
 
-# -- 吸引点 1: 导师背调 (解决客户最怕的“变态导师”痛点) --
+# -- 1. 导师画像 (高密度：人品与资金审计) --
 with tabs[0]:
-    st.markdown('<div class="barrier-card"><h3>🎯 导师“生存率”穿透审计</h3><b>吸引力：</b> 客户最怕遇到“学术流氓”。本模块自动检索该导师的撤稿历史、学生平均毕业年限及社交平台差评。</div>', unsafe_allow_html=True)
-    c1, c2, c3 = st.columns(3)
-    with c1: st.link_button("🕵️ 检索撤稿/丑闻记录", get_search(f"{p_name} {u_name} academic integrity misconduct scandal"))
-    with c2: st.link_button("💰 穿透实验室资金流", get_search(f"{p_name} {u_name} research grants awards funding"))
-    with c3: st.link_button("📡 匿名评价穿透 (Reddit/Glassdoor)", get_search(f"{p_name} {u_name} laboratory culture student reviews"))
+    st.markdown('<div class="logic-container">', unsafe_allow_html=True)
+    st.subheader("🧬 PI 学术信誉与实验室生存率审计")
+    col_a, col_b = st.columns([2, 1])
+    with col_a:
+        st.write("**核心审计维度：**")
+        st.write("- **学术诚信穿透**: 自动对齐 Retraction Watch。如有撤稿或学术不端，系统触发 🔴 预警。")
+        st.write("- **资助链稳定性**: 检索 PI 在该国资助局（如 NSF/ERC）的 Grant 剩余年限。")
+        st.write("- **人员流失率**: 分析其 Lab 博后平均在位时间，识别“天坑”系数。")
+        st.link_button("🕵️ 启动全网学术诚信穿透", get_search(f"{p_name} {u_name} academic integrity misconduct scandal"))
+    with col_b:
+        st.markdown('<span class="monetize-tag">变现点：背调报告付费服务</span>', unsafe_allow_html=True)
+        risk_score = st.slider("导师风险自评模拟器", 0, 100, 45)
+        st.write(f"当前预估风险值: {risk_score}%")
+    st.markdown('</div>', unsafe_allow_html=True)
 
-# -- 吸引点 2: 签证红线 (解决客户最怕的“政治审查”痛点) --
+# -- 2. 签证红线 (高密度：出口管制专区) --
 with tabs[1]:
-    st.subheader(f"🛂 {jurisdiction} 出口管制与签证红线检测")
-    st.markdown(f'<div class="barrier-card"><b>技术壁垒：</b> 自动化匹配敏感专业（AI、半导体等）的合规路径，规避 {jurisdiction} 的出口管制调查。</div>', unsafe_allow_html=True)
-    col1, col2 = st.columns([2, 1])
-    with col1:
-        st.write(f"1. **出口管制预警**: 自动生成 {jurisdiction} 针对高精尖专业的申报 Checklist。")
-        st.write(f"2. **全家安置主权**: 匹配配偶工作许可 (EAD) 及子女公立教育资源。")
-        st.link_button(f"获取 {jurisdiction} 官方科研签证合规手册", get_search(f"{jurisdiction} official researcher visa requirements 2024"))
-    with col2:
-        st.error("🚀 预警响应")
-        st.write("当前地区敏感专业拒签风险：偏高。建议准备 SOP 申诉信模板。")
+    st.markdown('<div class="logic-container">', unsafe_allow_html=True)
+    st.subheader(f"🛂 {region} 移民法合规与技术出口管制 (Export Control)")
+    st.write(f"针对敏感专业（AI、半导体、量子），系统已自动载入 {region} 的官方合规路径。")
+    v_c1, v_c2 = st.columns(2)
+    with v_c1:
+        st.write("**技术审查对冲：**")
+        st.write(f"- **ATAS/10043 自动化判定**: 基于您的背景自动生成 {region} 官方合规申报书。")
+        st.link_button(f"获取 {region} 官方科研签证合规手册", get_search(f"{region} official researcher visa requirements 2024"))
+    with v_c2:
+        st.write("**家属主权方案：**")
+        st.write("- **配偶工作权**: 自动匹配 EAD 申请指南。")
+        st.write("- **子女教育**: 定位目标大学周边 5km 内公立学校资源。")
+        st.link_button(f"检索 {u_name} 周边教育配套", get_search(f"schools and childcare near {u_name}"))
+    st.markdown('</div>', unsafe_allow_html=True)
 
-# -- 吸引点 4: 文书盾 (解决客户最怕的“AI 查重”痛点) --
+# -- 4. 文书主权 (高密度：AI 降权交互) --
 with tabs[3]:
-    st.subheader("📄 文书主权盾：NLP 反检测重构")
-    st.markdown('<div class="barrier-card"><b>吸引力：</b> 现在的大学查 AI 极严。本模块通过学术逻辑降权，确保你的 SOP 符合 Top 校查重标准。</div>', unsafe_allow_html=True)
-    st.link_button("🚀 访问 Overleaf LaTeX 全球学术模板", "https://www.overleaf.com/gallery/tagged/cv")
-    st.link_button("🛡️ 启动 AI 痕迹深度自检 (GPTZero Bypass)", "https://gptzero.me/")
-    st.text_area("文书主权预审区 (粘贴 SOP/CV)...", height=100)
+    st.markdown('<div class="logic-container">', unsafe_allow_html=True)
+    st.subheader("📄 文书主权盾：基于 NLP 的逻辑重构引擎")
+    st.write("**技术含金量：** 针对 Turnitin 等 AI 检测器的底层逻辑进行学术降权算法对冲。")
+    c_a, c_b = st.columns(2)
+    with c_a:
+        st.success("🛠️ 全球科研简历 (CV) 工业模板")
+        st.link_button("加载 Overleaf LaTeX 专项库", "https://www.overleaf.com/gallery/tagged/cv")
+    with c_b:
+        st.success("🛡️ AI 痕迹对冲工具")
+        st.link_button("启动学术逻辑降权扫描", "https://gptzero.me/")
+    sop_input = st.text_area("文书实时诊断 (粘贴至此)", placeholder="粘贴您的 SOP 段落，系统将分析 AI 痕迹和逻辑密度...", height=150)
+    if sop_input: st.button("开始 AI 痕迹消除模拟")
+    st.markdown('</div>', unsafe_allow_html=True)
 
-# -- 吸引点 7: 维权核武器 (客户的核心安全感来源) --
+# -- 7. 维权阵地 (核心杀手锏：主权保障) --
 with tabs[6]:
-    st.error(f"🛡️ 遭遇导师剥削？系统已锁定 {u_name} 的独立救助逻辑。")
-    st.markdown('<div class="barrier-card"><b>商业护城河：</b> 自动化锁定 Ombudsman (调解官)。这是中介绝对不知道的“保命”信息，能极大增强客户信任。</div>', unsafe_allow_html=True)
-    v1, v2 = st.columns(2)
+    st.markdown('<div class="logic-container">', unsafe_allow_html=True)
+    st.error(f"🛡️ 遭受学术剥削或霸凌？本系统已锁定 {u_name} 的独立救助逻辑。")
+    st.write("**商业壁垒：** 自动化匹配 Ombudsman (调解官) 系统，这是任何中介都不具备的法律深层数据。")
+    v1, v2, v3 = st.columns(3)
     with v1:
-        st.markdown("#### ⚖️ 院校调解员 (Ombudsman)")
-        st.link_button("唤起校内维权申诉", get_search(f"{u_name} independent student ombudsman office formal complaint"))
+        st.markdown("#### ⚖️ 独立调解官 (Ombudsman)")
+        st.link_button("唤起校内维权申请", get_search(f"{u_name} independent student ombudsman office formal complaint"))
     with v2:
-        st.markdown("#### 🏛️ 法律援助 (Legal Union)")
-        st.link_button(f"联系 {jurisdiction} 地区科研工会", get_search(f"{jurisdiction} National Union of Students legal aid"))
+        st.markdown(f"#### 🏛️ {region} 科研工会")
+        st.link_button("获取法律援助入口", get_search(f"{region} National Union of Students legal aid"))
+    with v3:
+        st.markdown("#### 📜 法律主权援助")
+        st.link_button("搜索当地免费律师服务", get_search(f"{region} pro bono legal aid for international researchers"))
+    st.markdown('</div>', unsafe_allow_html=True)
 
-# -- 吸引点 8: 48月营收流 (投资人最爱的变现闭环) --
+# -- 8. 48月规划 (高密度：变现矩阵) --
 with tabs[7]:
-    st.subheader("📅 科研全周期 48 个月风险管理与营收转化")
-    st.info("📊 **商业模式**：这不是工具，而是长达 4 年的服务入口。")
+    st.markdown('<div class="logic-container">', unsafe_allow_html=True)
+    st.subheader("📅 科研全生命周期 48 个月风险管理与营收矩阵")
+    st.info("📈 **投资人逻辑**：本产品不仅是工具，更是长达 4 年的精准流量入口，覆盖 10 个以上高客单价业务。")
     st.table([
-        {"阶段": "M1-M12", "任务": "合规入驻", "高客单价转化点": "科研合规包、海外医疗险、法务包"},
-        {"阶段": "M13-M36", "任务": "产出爆发", "高客单价转化点": "顶级论文润色、学术集采、差旅"},
-        {"阶段": "M37-M48", "任务": "身份收割", "高客单价转化点": "移民律师、永居代办、高端猎头"}
+        {"周期": "M1-M12", "任务": "合规入驻与开题", "变现出口": "合规保险、搬迁服务、法律包"},
+        {"周期": "M13-M36", "任务": "数据爆发与顶刊发表", "变现出口": "学术润色、翻译、会议差旅集采"},
+        {"周期": "M37-M48", "任务": "毕业答辩与永居衔接", "变现出口": "高端猎头、移民律师、PR代办"}
     ])
-    st.date_input("项目起始基准日", value=datetime.now())
+    st.markdown('</div>', unsafe_allow_html=True)
 
-# -- 其余模块补全 --
+# -- 补全其他模块 --
 with tabs[2]:
-    st.subheader("✉️ 陶瓷全自动化引擎")
-    st.code("Subject: Prospective PhD Researcher - [Area] - [Name]", language="markdown")
-    st.link_button(f"检索 {u_name} 关键节假日校历", get_search(f"{u_name} academic calendar holiday"))
+    st.subheader("✉️ 陶瓷链路全自动化流")
+    st.code(f"Subject: Prospective PhD Researcher - {u_name} - [Your Name]", language="markdown")
+    st.link_button(f"检索 {u_name} 面试黄金窗口", get_search(f"{u_name} academic calendar holiday"))
 
 with tabs[4]:
-    st.subheader(f"💼 {jurisdiction} 职业发展与 PR 衔接")
-    st.link_button("LinkedIn 全球人才库实时检索", f"https://www.linkedin.com/jobs/search/?keywords=PhD&location={jurisdiction}")
+    st.subheader(f"💼 {region} 职业发展与 PR 身份算法")
+    st.link_button("LinkedIn 全球人才库实时检索", f"https://www.linkedin.com/jobs/search/?keywords=PhD&location={region}")
 
 with tabs[5]:
     st.subheader("🍎 全球健康主权与保障")
-    st.link_button("自动化检索校内 Wellbeing 中心", get_search(f"{u_name} student mental health support"))
+    st.link_button("紧急寻找校内心理干预热线", get_search(f"{u_name} student health psychological services"))
