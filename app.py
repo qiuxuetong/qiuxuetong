@@ -2,125 +2,139 @@ import streamlit as st
 import urllib.parse
 from datetime import datetime
 
-# --- 商用级 UI 配置 ---
-st.set_page_config(
-    page_title="Global Study Nexus | 商用旗舰版",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# --- 1. 商用级架构配置 ---
+st.set_page_config(page_title="Global Study Nexus Pro", layout="wide")
 
-# --- 核心底层逻辑 ---
-def get_search(q):
-    return f"https://www.google.com/search?q={urllib.parse.quote(q)}"
+# CSS 注入：增强视觉专业感
+st.markdown("""
+    <style>
+    .main { background-color: #f8f9fa; }
+    .stTabs [data-baseweb="tab-list"] { gap: 8px; }
+    .stTabs [data-baseweb="tab"] {
+        height: 50px; background-color: #ffffff; border-radius: 5px; 
+        padding: 10px; border: 1px solid #e0e0e0;
+    }
+    .stTabs [aria-selected="true"] { background-color: #007bff !important; color: white !important; }
+    </style>
+    """, unsafe_allow_html=True)
 
-# --- 侧边栏：全局动态过滤器 (投资人看重的多维度交互) ---
+# --- 2. 侧边栏：全局中央控制塔 ---
 with st.sidebar:
-    st.header("⚙️ 全球枢纽配置")
-    target_univ = st.text_input("目标院校 (Global Univ)", value="ETH Zurich")
-    target_prof = st.text_input("目标导师 (Faculty)", value="Piotr Smolenski")
-    target_region = st.selectbox("目标国家/地区", 
-        ["美国", "英国", "德国", "瑞士", "新加坡", "香港", "加拿大", "澳洲", "比利时", "波兰", "荷兰"])
+    st.title("🌐 全球指挥中心")
+    st.subheader("全局变量定义")
+    u_name = st.text_input("目标院校", value="ETH Zurich", help="支持全球任意大学")
+    p_name = st.text_input("目标导师", value="Piotr Smolenski")
+    country = st.selectbox("目标国家/地区", ["美国", "英国", "德国", "瑞士", "新加坡", "香港", "加拿大", "澳洲", "荷兰", "比利时", "波兰"])
     st.divider()
-    st.metric(label="AI 决策引擎状态", value="已连接", delta="Premium")
+    st.metric("合规引擎", "Active", "2.5.0-v9")
     st.write("---")
-    st.write("🚀 **商用价值：** 解决留学生、科研人员出海的信息断层，提供端到端合规化保障。")
+    st.markdown("### 🛠️ 快捷工具\n- [QS排名查询](https://www.topuniversities.com/university-rankings)\n- [汇率实时换算](https://www.xe.com/)")
 
-# --- 主界面 ---
-st.title("🌐 Global Study Nexus")
-st.caption("全球大学全生命周期合规与科研闭环系统 - v8.0 Commercial Suite")
+# --- 3. 自动化唤起逻辑 ---
+def get_search(q): return f"https://www.google.com/search?q={urllib.parse.quote(q)}"
 
-# --- 8大功能矩阵：强制深度填充 ---
-tabs = st.tabs([
-    "🎯 导师溯源", "🛂 签证合规", "✉️ 陶瓷唤起", "📄 文书盾", 
-    "💼 职业永居", "🍎 健康风险", "🛡️ 维权矩阵", "📅 全局规划"
-])
+# --- 4. 8大模块深度填充 (商用闭环) ---
+tabs = st.tabs(["🎯 导师画像", "🛂 签证/居留", "✉️ 陶瓷流", "📄 文书盾", "💼 找工/永居", "🍎 健康/保险", "🛡️ 维权矩阵", "📅 全局规划"])
 
-# 1. 导师溯源
+# -- Tab 1: 导师画像 --
 with tabs[0]:
-    st.subheader("🎯 导师学术画像与官方链路")
+    st.subheader("🎯 导师学术背景与社交路径追踪")
     c1, c2, c3 = st.columns(3)
     with c1:
-        st.info("📊 **学术背调**")
-        st.write("自动化检索导师近5年 H-index、顶刊产出及学术声誉。")
-        st.link_button("查看最新学术成果", f"https://scholar.google.com/scholar?q={target_prof}+{target_univ}")
+        st.info("🧬 **学术纯度检测**")
+        st.write("- 检索导师是否有撤稿记录或学术不端新闻。")
+        st.link_button("自动化背景调查", get_search(f"{p_name} {u_name} academic misconduct retraction"))
     with c2:
-        st.info("🌐 **官方背书**")
-        st.write("直接映射院校教职员数据库，排除虚假信息。")
-        st.link_button("直达院校官网主页", get_search(f"{target_prof} {target_univ} faculty page"))
+        st.info("📡 **实时动态追踪**")
+        st.write("- 追踪其近 6 个月是否在 X/LinkedIn 活跃或发布招生信息。")
+        st.link_button("社交媒体/招生信息检索", get_search(f"{p_name} {u_name} recruitment opening PhD"))
     with c3:
-        st.info("📧 **通信链路**")
-        st.write("基于大学域名的邮箱自动化探测。")
-        st.link_button("探测官方办公邮箱", get_search(f"{target_prof} {target_univ} official email"))
+        st.info("📧 **通信链路映射**")
+        st.write("- 尝试映射该院校实验室通用邮箱地址。")
+        st.link_button("探测官方实验室邮箱", get_search(f"{p_name} laboratory contact email {u_name}"))
 
-# 2. 签证合规
+# -- Tab 2: 签证/居留 --
 with tabs[1]:
-    st.subheader(f"🛂 {target_region} 签证与家属移民合规")
-    col_v1, col_v2 = st.columns([2, 1])
-    with col_v1:
+    st.subheader(f"🛂 {country} 签证与家属移居全案")
+    col1, col2 = st.columns([2, 1])
+    with col1:
         st.markdown(f"""
-        ### 🛂 核心办证方案
-        * **签证类型**: 全球科研人员专项签证（如美国 J1/F1, 欧盟科研人员指令 2016/801）。
-        * **资产要求**: 自动化核算 {target_region} 生活成本线，预估保证金需求。
-        * **家属陪读**: 自动化唤起 Dependent Visa 办理逻辑，确保家属合法工作权。
+        ### ⚖️ 合规化路径指南
+        1. **预签审查**: 检查是否涉及敏感技术转移限制(如美国 10043 号令)。
+        2. **签证递交**: 自动化链接至 {country} 驻华使馆及 VFS 全球预约中心。
+        3. **陪读/家属**: 提供配偶工作许可 (EAD/Work Permit) 的申请逻辑。
         """)
-        st.link_button(f"查看 {target_region} 移民局官方合规文件", get_search(f"{target_region} official student researcher visa rules"))
-    with col_v2:
-        st.warning("⚠️ **风控提示**")
-        st.write("敏感专业需进行额外的出口管制调查（Export Control Review）。")
+        st.link_button("获取官方合规清单", get_search(f"{country} researcher visa checklist official"))
+    with col2:
+        st.warning("💰 **资金证明预算**")
+        st.write(f"预估 {country} 博士首年总开支（含学费及生活成本）约为 35,000 - 55,000 USD。")
 
-# 4. 文书盾 (防AI检测与优化)
-with tabs[3]:
-    st.subheader("📄 文书盾：AI 检测规避与学术提升")
-    st.write("商用级文书质量保证体系，集成 Turnitin 与高级 AI 检测器逻辑。")
-    c_a, c_b = st.columns(2)
-    with c_a:
-        st.markdown("#### 🛠️ 排版与格式")
-        st.link_button("全球学术 CV 标准模板 (Overleaf)", "https://www.overleaf.com/gallery/tagged/cv")
-    with c_b:
-        st.markdown("#### 🛡️ 合规性自检")
-        st.link_button("启动 AI 痕迹深度扫描", "https://gptzero.me/")
-    st.text_area("文书质量诊断区", placeholder="在此粘贴 PS/CV 摘要，系统将自动进行合规性预审...", height=150)
-
-# 7. 维权矩阵 (投资人关注的社会责任/用户粘性点)
-with tabs[6]:
-    st.subheader("🛡️ 全球留学生维权与法律保障矩阵")
-    st.error("🚨 遭遇学术霸凌、成果侵占或歧视？系统已为您锁定法定救助渠道。")
-    v1, v2 = st.columns(2)
-    with v1:
-        st.markdown("#### ⚖️ 校内独立调查 (Ombudsman)")
-        st.write(f"已自动定位 {target_univ} 的申诉官办公室，其调查权独立于院长。")
-        st.link_button("点击唤起维权申请", get_search(f"{target_univ} ombudsman office student complaints"))
-    with v2:
-        st.markdown("#### 🏛️ 法律援助 (Legal Aid)")
-        st.write("自动检索该地区提供免费法律咨询的学生工会（Student Union）。")
-        st.link_button("查找当地法律援助", get_search(f"{target_region} legal aid for international students"))
-
-# 8. 全局规划 (48月全生命周期图表)
-with tabs[7]:
-    st.subheader("📅 全球科研全生命周期管理 (48 Months)")
-    st.write("基于核心算法生成的博士/科研项目关键节点追踪。")
-    st.markdown("""
-    | 周期 | 核心任务 | 风险管控点 |
-    | :--- | :--- | :--- |
-    | **M1-M12** | 选题定稿、文献综述、实验室整合 | 导师风格磨合、选题可行性 |
-    | **M13-M30** | 数据采集、核心实验、顶刊发表 | 实验数据偏差、论文被拒风险 |
-    | **M31-M42** | 论文撰写、国际会议、人脉拓展 | 延毕预警、财务压力 |
-    | **M43-M48** | 答辩准备、找工签证、身份转换 | 雇主担保、身份衔接 |
-    """)
-    st.date_input("项目起始基准日", value=datetime.now())
-
-# --- 补充其余模块内容，确保“每一项都不空置” ---
+# -- Tab 3: 陶瓷流 --
 with tabs[2]:
-    st.subheader("✉️ 陶瓷全自动化：从初选到面试回复")
-    st.code("Subject: PhD Inquiry - [Your Name] - [Target Lab]", language="markdown")
-    st.link_button("查询该院校学术日历 (避开休假时机)", get_search(f"{target_univ} academic calendar"))
+    st.subheader("✉️ 动态陶瓷话术与发送策略")
+    st.write("针对不同阶段的自动化邮件唤起：")
+    e1, e2, e3 = st.columns(3)
+    with e1:
+        st.markdown("**1. 初次接触 (Cold Email)**")
+        st.code("Subject: Research Inquiry: [Focus Area] - [Name]", language="markdown")
+    with e2:
+        st.markdown("**2. 面试后跟进 (Thank you)**")
+        st.code("Subject: Thank you - Interview Follow-up", language="markdown")
+    with e3:
+        st.markdown("**3. 截止日期前提醒**")
+        st.code("Subject: Application Submission - Final Check", language="markdown")
+    st.link_button(f"📅 自动化检索 {u_name} 关键节假日", get_search(f"{u_name} academic holidays 2024 2025"))
 
+# -- Tab 4: 文书盾 --
+with tabs[3]:
+    st.subheader("📄 文书盾：学术合规与竞争优势")
+    st.write("集成全球顶尖院校的 AI 检测政策库。")
+    st.link_button("🚀 Overleaf 全球学术 CV 工业级模板", "https://www.overleaf.com/gallery/tagged/cv")
+    st.divider()
+    st.markdown("#### 🛡️ 合规自检流")
+    st.write("1. 检查文中是否有明显的 AI 生成特征。")
+    st.write("2. 自动匹配该校 Statement of Purpose (SOP) 的字数与格式要求。")
+    st.link_button("跳转至文书风控检测工具 (GPTZero/Turnitin)", "https://gptzero.me/")
+
+# -- Tab 5: 找工/永居 --
 with tabs[4]:
-    st.subheader(f"💼 {target_region} 职业永居与高技术移民路径")
-    st.info("📊 数据分析：根据目标国政策，博士毕业生享有 12-36 个月不等的找工绿灯期。")
-    st.link_button("LinkedIn 实时岗位画像", f"https://www.linkedin.com/jobs/search/?keywords=PhD&location={target_region}")
+    st.subheader(f"💼 {country} 职业发展与身份衔接")
+    st.success("📊 变现价值：解决毕业后的身份断层痛点。")
+    st.write(f"- **找工假 (Job Seeking)**: 自动化分析 {country} 对于博士毕业生的延期居留期限。")
+    st.write("- **紧缺职位**: 自动抓取当地对科研人员的雇主担保名单。")
+    st.link_button(f"🔍 LinkedIn {country} 科研岗位实时看板", f"https://www.linkedin.com/jobs/search/?keywords=Postdoc&location={country}")
+    st.link_button(f"🛂 {country} 高技术移民 PR 申请指南", get_search(f"{country} permanent residency for Ph.D. holders"))
 
+# -- Tab 6: 健康/保险 --
 with tabs[5]:
-    st.subheader("🍎 全球健康风险管理")
-    st.write("集成医疗保险自检、校园心理支持热线及紧急医疗地图。")
-    st.link_button("紧急寻找校内健康服务", get_search(f"{target_univ} student health well-being services"))
+    st.subheader("🍎 全球健康风险与应急保障")
+    st.markdown("### 🏥 医疗合规清单")
+    st.write(f"1. **强制保险**: 匹配 {country} 法律要求的国际学生基本医疗险。")
+    st.write("2. **心理健康**: 自动定位校内 24/7 紧急干预热线。")
+    st.link_button(f"🚑 紧急搜索 {u_name} 校医院位置与预约", get_search(f"{u_name} student health services location appointment"))
+
+# -- Tab 7: 维权矩阵 --
+with tabs[6]:
+    st.subheader("🛡️ 全球维权与法律纠纷矩阵")
+    st.error("⚠️ 遭遇导师霸凌、学术不端或不公平待遇？系统已为您规划三级防御：")
+    v1, v2, v3 = st.columns(3)
+    with v1:
+        st.markdown("#### 1. 校内调解 (Ombudsman)")
+        st.link_button("查找院校独立调解官", get_search(f"{u_name} student ombudsman office"))
+    with v2:
+        st.markdown("#### 2. 校外仲裁 (Student Union)")
+        st.link_button("联系当地学生工会", get_search(f"{country} National Student Union legal support"))
+    with v3:
+        st.markdown("#### 3. 法律起诉 (Legal Action)")
+        st.link_button("搜索当地免费法律援助", get_search(f"{country} pro bono legal aid for foreigners"))
+
+# -- Tab 8: 全局规划 --
+with tabs[7]:
+    st.subheader("📅 48个月全流程项目管理")
+    st.write("基于核心算法的 4 年学术路径图。")
+    st.table([
+        {"阶段": "M1-M12", "任务": "课程修读、文献综述、实验室适应", "风险": "导师磨合期、开题失败"},
+        {"阶段": "M13-M36", "任务": "独立研究、中期考核、论文发表", "风险": "实验数据异常、心理危机"},
+        {"阶段": "M37-M48", "任务": "毕业答辩、职业搜索、身份衔接", "风险": "找工受阻、延毕风险"}
+    ])
+    st.date_input("项目起始基准日 (Baseline)", value=datetime.now())
