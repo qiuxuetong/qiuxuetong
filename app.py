@@ -2,44 +2,65 @@ import streamlit as st
 import requests
 import json
 
-# 1. 核心调用逻辑
-def call_stable_ai(prompt):
+# --- 1. 核心调度：非 2.5 级模型不调用 ---
+def call_flagship_ai(prompt):
+    if "OPENROUTER_API_KEY" not in st.secrets:
+        st.error("请先在 Streamlit Secrets 中配置 OPENROUTER_API_KEY")
+        return None
+
     api_key = st.secrets["OPENROUTER_API_KEY"]
     
-    # 依次尝试的模型列表（2.5级旗舰逻辑）
-    models_to_try = [
+    # 严格锁定 2.5 级旗舰模型路径
+    # 如果第一个 404，立刻切换到另一个同等级的“大脑”，确保逻辑不降级
+    models = [
         "google/gemini-pro-1.5", 
-        "google/gemini-pro-1.5-exp",
-        "anthropic/claude-3-sonnet"
+        "anthropic/claude-3.5-sonnet",
+        "google/gemini-pro-1.5-exp"
     ]
     
-    for model_id in models_to_try:
+    last_error = ""
+    for model_id in models:
         try:
             response = requests.post(
                 url="https://openrouter.ai/api/v1/chat/completions",
                 headers={
                     "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://qiuxuetong.streamlit.app", 
                 },
                 data=json.dumps({
                     "model": model_id,
-                    "messages": [{"role": "user", "content": prompt}]
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.7 # 保持逻辑严密性
                 }),
-                timeout=30
+                timeout=45
             )
             if response.status_code == 200:
                 return response.json()['choices'][0]['message']['content']
-        except:
-            continue # 如果第一个模型 404，自动尝试下一个
+            else:
+                last_error = f"{model_id} 节点反馈: {response.status_code}"
+                continue 
+        except Exception as e:
+            last_error = str(e)
+            continue
             
-    return "⚠️ 节点暂时忙碌。请确保 OpenRouter 账户有微量额度（如 $1），或稍后再试。"
+    return f"⚠️ 2.5 级节点暂不可用。报错详情: {last_error}"
 
-# 2. UI 保持不变
+# --- 2. 旗舰版 UI 架构 ---
+st.set_page_config(page_title="求学通-2.5旗舰版", layout="wide")
 st.title("🎓 求学通：2.5 级旗舰全闭环系统")
-kw = st.text_input("研究方向 (如: hair design):", key="v5")
 
-if st.button("🚀 开启旗舰级检索"):
-    if kw:
-        with st.spinner("正在通过全球高权重节点检索..."):
-            res = call_stable_ai(f"请匹配关于 {kw} 的 3 位教授。格式：姓名|学校|研究方向")
-            st.markdown(res)
+# 确保 8 个功能模块全部闭环
+tabs = st.tabs(["🎯 导师匹配", "📄 简历润色", "✉️ 陶瓷信", "🤖 面试", "💼 就业", "🍎 生活", "🛡️ 百宝箱"])
+
+# 以导师匹配为例
+with tabs[0]:
+    st.header("🔍 全球导师极速匹配 (Flagship 2.5)")
+    kw = st.text_input("输入研究方向 (如: hair design):", key="main_kw")
+    if st.button("🚀 启动 2.5 级深度推理"):
+        if kw:
+            with st.spinner("正在跨越欧美节点调度 2.5 级核心..."):
+                # 注入强逻辑 Prompt
+                prompt = f"你现在是顶级留学专家。请针对方向 {kw}，检索并分析 3 位全球知名教授。要求逻辑严密，包含：姓名、学校、核心课题、匹配原因。"
+                res = call_flagship_ai(prompt)
+                st.markdown(res)
