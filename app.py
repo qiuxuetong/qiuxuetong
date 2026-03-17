@@ -1,80 +1,87 @@
 import streamlit as st
 import google.generativeai as genai
-import urllib.parse
-import re
 from PyPDF2 import PdfReader
 
-# 1. 核心配置：使用 Secrets 安全加载 API Key
-# 调试信息（运行成功后可以删掉下面这一行）
-if "GOOGLE_API_KEY" in st.secrets:
-    st.write(f"🔑 系统状态：API Key 已成功加载 (开头: {st.secrets['GOOGLE_API_KEY'][:4]})")
-else:
-    st.error("❌ 错误：未在 Streamlit Secrets 中找到 GOOGLE_API_KEY")
-
-# 初始化全局模型
+# 1. 核心初始化
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 model = genai.GenerativeModel('gemini-2.5-flash')
 
-# 2. 页面设置
-st.set_page_config(page_title="导师套磁专家", layout="wide")
-st.title("🎓 博士申请导师匹配系统")
+# 2. 页面配置
+st.set_page_config(page_title="求学通-全能留学管家", layout="wide")
+st.title("🎓 求学通：博士申请与海外生活全能系统")
 
-# --- 第一部分：导师匹配 ---
-keywords = st.text_input("请输入具体研究方向 (如: Medical Image Analysis):")
+# 3. 标签页增加：落地生活服务
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    "🎯 导师与学术匹配", 
+    "🏠 落地生活服务 (必看)", 
+    "📄 简历与文书润色", 
+    "✉️ 陶瓷信自动生成",
+    "🤖 面试与日常口语模拟"
+])
 
-if st.button("🚀 极速匹配 3 位导师"):
-    if not keywords:
-        st.warning("请输入研究方向")
-    else:
-        try:
-            with st.spinner("正在扫描全球顶尖实验室..."):
-                prompt = f"Identify 3 active professors specializing in '{keywords}'. Format each strictly: 1. Name, 2. University, 3. Research focus."
-                response = model.generate_content(prompt)
-                st.subheader("📍 推荐导师列表")
-                st.markdown(response.text)
-        except Exception as e:
-            st.error(f"导师查找失败: {e}")
+# --- Tab 1: 导师匹配 (略，保持原有功能) ---
+with tab1:
+    st.header("🔍 全球导师极速匹配")
+    keywords = st.text_input("请输入研究方向:", key="prof_search")
+    if st.button("🚀 寻找导师"):
+        with st.spinner("检索中..."):
+            prompt = f"Find 3 active professors for '{keywords}'. Include Name, University, and Research focus."
+            st.markdown(model.generate_content(prompt).text)
 
-st.divider()
+# --- Tab 2: 落地生活服务 (全新升级版！) ---
+with tab2:
+    st.header("📍 到达后的 168 小时：落地服务指南")
+    col1, col2 = st.columns([1, 2])
+    with col1:
+        city = st.text_input("输入你的目的城市 (如: Munich, Sydney, Toronto):")
+        needs = st.multiselect(
+            "哪些是你的当务之急？",
+            ["本地手机卡 (SIM Card)", "银行开户 (Bank Account)", "医疗保险与GP注册", "市政厅/警察局注册", "学生交通卡办理", "二手家具/二手车渠道"],
+            default=["本地手机卡 (SIM Card)", "银行开户 (Bank Account)"]
+        )
+    
+    with col2:
+        st.info("💡 提示：AI 会为你提供具体的操作步骤、所需材料清单以及本地评价最高的供应商。")
+        if st.button("📋 生成我的落地清单"):
+            if city:
+                with st.spinner(f"正在准备 {city} 的生活手册..."):
+                    prompt = f"""
+                    Provide a 'First Week Survival Guide' for a student arriving in {city}. 
+                    Focus on: {needs}.
+                    For each selected item, provide:
+                    1. **Where to go**: Specific locations or recommended providers (e.g., specific banks or telecom brands).
+                    2. **What to bring**: A checklist of documents (Passport, Visa, Letter of Acceptance, etc.).
+                    3. **Evaluation**: Why these providers are better for international students.
+                    4. **Pro-tip**: One local secret to save money or time.
+                    """
+                    st.markdown(model.generate_content(prompt).text)
+            else:
+                st.warning("请输入城市名称")
 
-# --- 第二部分：简历润色 ---
-st.header("📄 AI 简历 (CV) 深度润色专家")
-uploaded_file = st.file_uploader("上传你的 PDF 版简历", type="pdf")
+# --- Tab 3: 简历润色 (略) ---
+with tab3:
+    st.header("📄 CV 深度诊断")
+    uploaded_file = st.file_uploader("上传 PDF 简历", type="pdf")
+    if st.button("✨ 开启 AI 润色"):
+        if uploaded_file:
+            reader = PdfReader(uploaded_file)
+            cv_text = "".join([page.extract_text() for page in reader.pages])
+            prompt = f"Critique and improve this academic CV text: {cv_text}"
+            st.markdown(model.generate_content(prompt).text)
 
-if st.button("✨ 开始 AI 诊断"):
-    if uploaded_file is not None:
-        try:
-            with st.spinner("正在分析简历并生成润色建议..."):
-                # 读取 PDF 内容
-                reader = PdfReader(uploaded_file)
-                cv_text = ""
-                for page in reader.pages:
-                    cv_text += page.extract_text()
-                
-                # 再次确保 API 连接（防止 Streamlit 运行丢失状态）
-                genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-                temp_model = genai.GenerativeModel('gemini-2.5-flash')
-                
-                refine_prompt = f"""
-                You are a senior professor. Analyze and refine the following CV text:
-                {cv_text}
-                
-                Please provide:
-                1. Overall Score (Out of 10)
-                2. Weak Spots
-                3. Refined Bullet Points (using strong action verbs)
-                4. Academic Tone Keywords
-                """
-                
-                response = temp_model.generate_content(refine_prompt)
-                st.subheader("✅ 诊断报告")
-                st.markdown(response.text)
-        except Exception as e:
-            st.error(f"简历诊断过程中出现错误: {e}")
-    else:
-        st.warning("请先上传 PDF 简历")
+# --- Tab 4: 陶瓷信生成 (略) ---
+with tab4:
+    st.header("✉️ 陶瓷信生成")
+    p_name = st.text_input("导师姓名:")
+    my_bg = st.text_area("我的优势:")
+    if st.button("✍️ 生成邮件"):
+        prompt = f"Write a professional PhD inquiry email to {p_name} based on: {my_bg}"
+        st.code(model.generate_content(prompt).text)
 
-# --- 第三部分：网站蓝图 ---
-with st.expander("💡 你的“求学通”网站蓝图"):
-    st.write("1. 第一步：导师查找和 CV 润色已激活。")
-    st.write("2. 第二步：未来可加入自动生成套磁信功能。")
+# --- Tab 5: 语言模拟 (新增日常场景) ---
+with tab5:
+    st.header("🗣️ 场景口语与面试模拟")
+    scenario = st.selectbox("选择模拟场景", ["博士面试", "银行开户沟通", "与房东谈租约", "去诊所看医生"])
+    if st.button("💬 开始模拟"):
+        prompt = f"Act as a person in the scenario: {scenario}. Give me 3 common questions they might ask me and 3 suggested professional responses."
+        st.markdown(model.generate_content(prompt).text)
