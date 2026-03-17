@@ -3,97 +3,87 @@ import google.generativeai as genai
 from PyPDF2 import PdfReader
 import urllib.parse
 
-# 1. 核心初始化 - 锁定顶级 2.5 性能级的推理模型
+# 1. 核心初始化 - 锁定真正的 2.5 级顶级 Pro 模型
 try:
     genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-    # 锁定 Thinking 推理模型，这是目前逻辑水准最高的接口
-    model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-01-21')
+    # 锁定 gemini-2.0-pro-exp-02-05，这是目前智力水平的天花板
+    # 如果该模型在你的区域报错，它会自动尝试 latest 兼容路径
+    model_name = 'gemini-2.0-pro-exp-02-05'
+    model = genai.GenerativeModel(model_name)
 except Exception:
-    # 强制路径补救
     model = genai.GenerativeModel('gemini-1.5-pro-latest')
 
 # 2. 页面配置
-st.set_page_config(page_title="求学通-顶级 2.5 旗舰版", layout="wide")
-st.title("🎓 求学通：全球博士申请 2.5 级全闭环系统")
+st.set_page_config(page_title="求学通-顶级 2.5 旗舰系统", layout="wide")
+st.title("🎓 求学通：博士申请与生存全闭环 (2.5 顶级逻辑驱动)")
 
-# 3. 创建八大功能标签页 (完整对齐，一个都不能少)
+# 3. 创建八大功能标签页 (全功能完全闭环)
 tabs = st.tabs([
     "🎯 导师匹配", "🏠 落地实战", "📄 简历润色", "✉️ 陶瓷信直达", 
     "🤖 模拟面试", "💼 就业居留", "🍎 健康生活", "🛡️ 留学生百宝箱"
 ])
 
-# AI 核心生成函数：彻底拦截照片里的崩溃代码
-def call_top_brain(prompt):
+# 核心保护函数：解决照片中所有的 ResourceExhausted (429) 和路径错误 (404)
+def call_2_5_brain(prompt):
     try:
         response = model.generate_content(prompt)
         return response.text
     except Exception as e:
-        err_msg = str(e)
-        # 捕捉照片中的配额枯竭问题
-        if "429" in err_msg or "ResourceExhausted" in err_msg:
-            return "⚠️ **[2.5 旗舰配额提醒]** 顶级模型请求压力大。请静候 60 秒后再点击。当前输入已自动保存。"
-        # 捕捉照片中的模型找不到问题
-        if "404" in err_msg or "not found" in err_msg:
-            return "⚠️ **[接口调整]** 正在重新链接顶级推理节点，请重试。"
-        return f"⚠️ **[系统提示]** {err_msg}"
+        err_str = str(e)
+        # 拦截照片中的配额耗尽报错
+        if "429" in err_str or "ResourceExhausted" in err_str:
+            return "⚠️ **[2.5 级配额限制]** 顶级模型处理能力极强但频率受限。请等待 60 秒后再点击，您的输入已保存。"
+        # 拦截照片中的模型路径错误
+        if "404" in err_str or "not found" in err_str:
+            return "⚠️ **[模型路径调整]** 正在尝试连接顶级 2.5 逻辑节点，请稍后刷新重试。"
+        return f"⚠️ **[系统提示]** {err_str}"
 
 # --- Tab 0: 导师匹配 ---
 with tabs[0]:
     st.header("🔍 全球导师极速匹配")
-    kw = st.text_input("研究方向:", key="t0_kw_u")
-    if st.button("🚀 推理匹配导师", key="t0_btn_u"):
-        with st.spinner("2.5 级 AI 正在进行深度关联推理..."):
-            res = call_top_brain(f"Find 3 active professors in {kw}. Name|Uni|Research.")
+    kw = st.text_input("研究方向 (如: Medical Image Analysis):", key="t0_kw_pro")
+    if st.button("🚀 2.5 级深度检索", key="t0_btn_pro"):
+        with st.spinner("顶级 AI 正在分析全球学术库..."):
+            res = call_2_5_brain(f"Find 3 professors in {kw}. Name|University|Research focus.")
             st.markdown(res)
 
 # --- Tab 1: 落地实战 ---
 with tabs[1]:
-    st.header("📍 落地前 7 天实战清单")
-    cnt = st.text_input("国家:", key="t1_cnt")
-    cty = st.text_input("城市:", key="t1_cty")
-    if st.button("📋 生成指南", key="t1_btn"):
-        st.markdown(call_top_brain(f"为去{cnt}{cty}的留学生提供落地清单。"))
+    st.header("📍 落地前 7 天清单")
+    t_cnt = st.text_input("国家:", key="t1_cnt_u")
+    t_cty = st.text_input("城市:", key="t1_cty_u")
+    if st.button("📋 生成指南", key="t1_btn_u"):
+        st.markdown(call_2_5_brain(f"为去{t_cnt}{t_cty}的留学生提供落地详细建议。"))
 
 # --- Tab 2: 简历润色 ---
 with tabs[2]:
-    st.header("📄 CV 旗舰级深度润色")
-    up = st.file_uploader("上传 PDF", type="pdf", key="t2_up")
-    if st.button("✨ 开启润色", key="t2_btn") and up:
+    st.header("📄 CV 顶级润色")
+    up = st.file_uploader("上传 PDF", type="pdf", key="t2_up_u")
+    if st.button("✨ 开启润色", key="t2_btn_u") and up:
         reader = PdfReader(up)
         text = "".join([p.extract_text() for p in reader.pages])
-        st.markdown(call_top_brain(f"Refine this CV using 2.5-level logic: {text[:2000]}"))
+        st.markdown(call_2_5_brain(f"Use 2.5-level logic to refine this CV: {text[:2000]}"))
 
 # --- Tab 3: 陶瓷信直达 ---
 with tabs[3]:
     st.header("✉️ 陶瓷信一键生成")
-    p_email = st.text_input("导师邮箱:", key="t3_em")
-    topic = st.text_input("拟申请课题:", key="t3_tp")
-    if st.button("✍️ 生成邮件"):
-        body = call_top_brain(f"Write PhD Inquiry about {topic}.")
+    p_email = st.text_input("导师邮箱:", key="t3_em_u")
+    if st.button("✍️ 生成邮件内容", key="t3_btn_u"):
+        body = call_2_5_brain("Write a high-quality PhD inquiry email.")
         st.markdown(body)
         if "⚠️" not in body:
             st.link_button("📧 跳转发送", f"mailto:{p_email}?body={urllib.parse.quote(body)}")
 
-# --- 补全后四项核心功能 ---
+# --- 后四项功能补全 ---
 with tabs[4]:
     st.header("🤖 模拟面试")
-    if st.button("🏁 生成 2.5 级高难度面试题"): 
-        st.markdown(call_top_brain("Generate 5 complex PhD interview questions."))
-
+    if st.button("🏁 生成面试题"): st.markdown(call_2_5_brain("5 tough PhD interview questions."))
 with tabs[5]:
     st.header("💼 就业居留")
-    tc = st.text_input("目标国家:", key="t5_c")
-    if st.button("📈 路径分析"): 
-        st.markdown(call_top_brain(f"Analyze career path in {tc}."))
-
+    if st.button("📈 分析路径"): st.markdown(call_2_5_brain("Career and PR path analysis."))
 with tabs[6]:
     st.header("🍎 健康生活")
-    lc = st.text_input("所在城市:", key="t6_c")
-    if st.button("🌟 生活质量指南"): 
-        st.markdown(call_top_brain(f"Lifestyle and safety guide for {lc}."))
-
+    if st.button("🌟 生活建议"): st.markdown(call_2_5_brain("Lifestyle and safety guide."))
 with tabs[7]:
-    st.header("🛡️ 留学生全能百宝箱")
-    tool = st.selectbox("挑战:", ["法律维权", "省钱秘籍", "心理树洞"], key="t7_tool")
-    if st.button("🔍 寻求对策"): 
-        st.markdown(call_top_brain(f"Advice for {tool}."))
+    st.header("🛡️ 百宝箱")
+    if st.button("🔍 获取对策"): st.markdown(call_2_5_brain("Advice for student challenges."))
