@@ -1,90 +1,83 @@
 import streamlit as st
 import requests
 import json
+import urllib.parse
+from datetime import datetime
 
-# --- 1. 配置与核心引擎 ---
-st.set_page_config(page_title="求学通-Flagship 2.5", layout="wide")
-
+# --- 1. 核心引擎与环境检查 ---
 def call_ai(prompt):
-    api_key = st.secrets["OPENROUTER_API_KEY"]
-    # 付费用户锁死最强两个模型：Claude 3.5 Sonnet 和 Gemini 1.5 Pro
+    api_key = st.secrets.get("OPENROUTER_API_KEY")
+    if not api_key:
+        st.error("🔑 请先在 Secrets 中设置 OPENROUTER_API_KEY")
+        return ""
+    
+    # 付费用户尊享：Claude 3.5 Sonnet (逻辑之王) + Gemini 1.5 Pro
     models = ["anthropic/claude-3.5-sonnet", "google/gemini-pro-1.5"]
     for model in models:
         try:
             response = requests.post(
                 url="https://openrouter.ai/api/v1/chat/completions",
                 headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                data=json.dumps({"model": model, "messages": [{"role": "user", "content": prompt}], "temperature": 0.4}),
+                data=json.dumps({"model": model, "messages": [{"role": "user", "content": prompt}], "temperature": 0.3}),
                 timeout=60
             )
             if response.status_code == 200:
                 return response.json()['choices'][0]['message']['content']
         except: continue
-    return "❌ 节点繁忙，请重试。"
+    return "❌ 逻辑节点繁忙，请点击按钮重试。"
 
-# --- 2. UI 界面与 8 大细致模块 ---
-st.title("🎓 求学通：Flagship 2.5 博士申请全闭环系统")
-st.caption("当前状态：商业级 Paid Tier 已激活 | 逻辑等级：2.5 级旗舰")
+# --- 2. 全自动链接生成器 ---
+def get_map_url(q): return f"https://www.google.com/maps/search/{urllib.parse.quote(q)}"
+def get_mail_url(to, sub, body): return f"mailto:{to}?subject={urllib.parse.quote(sub)}&body={urllib.parse.quote(body)}"
+def get_scholar_url(q): return f"https://scholar.google.com/scholar?q={urllib.parse.quote(q)}"
 
-tabs = st.tabs(["🎯 导师匹配", "📄 简历润色", "✉️ 陶瓷信", "🤖 模拟面试", "💼 就业居留", "🍎 生活健康", "🛡️ 申博保障", "🏗️ 项目规划"])
+# --- 3. 界面架构 ---
+st.set_page_config(page_title="求学通-商业全闭环", layout="wide", initial_sidebar_state="collapsed")
+st.title("🎓 求学通：Flagship 2.5 商业全闭环博士系统")
+st.info(f"📍 当前位置：比利时 🇧🇪 | 时间：{datetime.now().strftime('%Y-%m-%d %H:%M')}")
 
-# --- 模块 1: 导师匹配 ---
+tabs = st.tabs(["🎯 导师/实验室", "📄 文献/简历", "✉️ 陶瓷唤起", "🤖 模拟面试", "💼 居留/就业", "🍎 健康/心理", "🛡️ 法律/维权", "📅 进度控制"])
+
+# --- 1. 导师/实验室 (学术闭环) ---
 with tabs[0]:
-    st.subheader("🔍 深度学术画像与导师匹配")
-    research = st.text_input("输入你的细分研究方向:", placeholder="例如: Medical Image Analysis using Diffusion Models")
-    if st.button("启动 2.5 级检索"):
-        prompt = f"针对方向 {research}，请列出3位全球顶级教授。要求：1.分析其近3年核心研究逻辑；2.提供具体的‘套磁切入点’；3.给出申请建议。"
-        with st.spinner("正在检索商业数据库..."):
-            st.markdown(call_ai(prompt))
+    col_a, col_b = st.columns([2, 1])
+    with col_a:
+        research = st.text_input("输入研究关键词:", placeholder="例如: AI in Drug Discovery")
+        if st.button("🚀 挖掘全球顶级实验室"):
+            res = call_ai(f"针对 {research}，列出 3 个顶级实验室及其核心教授，并分析其‘给钱是否大方’。")
+            st.markdown(res)
+            st.divider()
+            st.link_button("🌐 直接去 Google Scholar 搜论文", get_scholar_url(f"{research} lab professor"))
+            st.link_button("📍 地图定位相关大学", get_map_url(f"Universities research in {research}"))
 
-# --- 模块 2: 简历润色 ---
-with tabs[1]:
-    st.subheader("📄 2.5 级科研简历重构")
-    cv_text = st.text_area("粘贴你的简历片段:")
-    if st.button("进行逻辑重构"):
-        prompt = f"请用 STAR 法则重构以下简历内容。要求：逻辑严密，突出独立解决问题的能力，使用强有力的动词，符合 2.5 级学术审美。\n{cv_text}"
-        st.markdown(call_ai(prompt))
-
-# --- 模块 3: 陶瓷信 ---
+# --- 3. 陶瓷唤起 (邮件闭环) ---
 with tabs[2]:
-    st.subheader("✉️ 极高回复率陶瓷信生成")
-    prof_info = st.text_input("输入导师姓名或最近的一篇论文标题:")
-    if st.button("生成深度陶瓷信"):
-        prompt = f"基于导师信息 {prof_info}，撰写一封陶瓷信。要求：第一段直接切入学术痛点，第二段展示我如何能解决他的课题，拒绝套话。"
-        st.markdown(call_ai(prompt))
+    st.subheader("✉️ 专家级陶瓷信 - 自动填充")
+    p_name = st.text_input("教授姓名:")
+    p_email = st.text_input("教授邮箱:")
+    tone = st.select_slider("信件语气", options=["谦逊", "平级探讨", "学术挑战"])
+    
+    if st.button("✍️ 自动撰写并准备唤起"):
+        email_body = call_ai(f"给教授 {p_name} 写一封陶瓷信，语气要 {tone}，内容要包含对其最新研究的深度见解。")
+        st.info(body := email_body)
+        if p_email:
+            # 这就是你想要的“唤起”功能：点击即打开 Outlook/Gmail
+            st.link_button("📧 一键唤起邮件客户端发送", get_mail_url(p_email, f"PhD Application Inquiry - {p_name}", body))
 
-# --- 模块 4: 模拟面试 ---
-with tabs[3]:
-    st.subheader("🤖 2.5 级 AI 博士面试官")
-    if st.button("开始压力面试测试"):
-        prompt = "请模拟一位严厉的欧洲博士面试官，针对我的研究计划提出三个具有挑战性的学术问题，并解释这些问题背后的逻辑。"
-        st.markdown(call_ai(prompt))
-
-# --- 模块 5: 就业居留 ---
+# --- 5. 居留/就业 (现实闭环) ---
 with tabs[4]:
-    st.subheader("💼 比利时/欧洲就业与居留咨询")
-    job_q = st.text_input("输入你想了解的政策（如：比利时求职签，荷兰高技术移民）:")
-    if st.button("获取深度政策分析"):
-        prompt = f"请详细分析针对中国博士生在 {job_q} 的居留政策。要求：包含时间线、关键门槛和避坑指南。"
-        st.markdown(call_ai(prompt))
+    st.subheader("💼 比利时/欧洲身份与就业规划")
+    action = st.radio("你的当前需求:", ["办理签证", "换发居留卡", "博士毕业找工作", "配偶陪读"])
+    if st.button("📍 获取官方入口与导航"):
+        res = call_ai(f"详细解释在比利时如何执行: {action}。")
+        st.markdown(res)
+        # 自动定位布鲁塞尔签证处/市政厅
+        st.link_button("📍 一键导航至布鲁塞尔移民局 (Office des Étrangers)", get_map_url("Boulevard Pacheco 44, 1000 Bruxelles"))
+        st.link_button("🔗 进入比利时官方居留办理预约网页", "https://dofi.ibz.be/en")
 
-# --- 模块 6: 生活健康 ---
-with tabs[5]:
-    st.subheader("🍎 博士心理健康与生活助手")
-    if st.button("获取压力应对方案"):
-        prompt = "作为博士心理专家，请针对学术压力（Burnout）提供一套基于认知行为疗法的自我调节方案，并推荐3个在欧洲生活的解压方式。"
-        st.markdown(call_ai(prompt))
-
-# --- 模块 7: 申博保障 ---
-with tabs[6]:
-    st.subheader("🛡️ 博士申请避坑与法律保障")
-    if st.button("获取避坑指南"):
-        prompt = "列举在欧洲（尤其是比利时）申请博士时可能遇到的3大法律或行政陷阱，例如合同细节、知识产权归属等。"
-        st.markdown(call_ai(prompt))
-
-# --- 模块 8: 项目规划 ---
+# --- 8. 进度控制 (时间闭环) ---
 with tabs[7]:
-    st.subheader("🏗️ 4年博士项目全周期规划")
-    if st.button("生成 48 个月规划图"):
-        prompt = "请详细规划一份 48 个月的博士研究时间轴。包含：选题期、数据采集期、论文产出期、论文提交与答辩期。每阶段要有 KPI。"
-        st.markdown(call_ai(prompt))
+    st.subheader("📅 博士 48 个月全自动避坑时间轴")
+    start_date = st.date_input("预计入学日期")
+    if st.button("🗓️ 生成高压预警时间表"):
+        plan = call_ai(f"从 {start_date} 开始，规划 4 年博士进度，标注出第几个月会遇到
