@@ -1,58 +1,27 @@
+import streamlit as st
 import datetime
-import time
+import json
+import os
 import smtplib
 from email.mime.text import MIMEText
 
-# =========================
-# 🌍 国家评分系统
-# =========================
-countries = {
-    "Canada": {"immigration": 9, "job": 7, "risk": 3},
-    "Germany": {"immigration": 7, "job": 8, "risk": 4},
-    "Netherlands": {"immigration": 6, "job": 8, "risk": 5},
-    "USA": {"immigration": 3, "job": 10, "risk": 8},
-    "Australia": {"immigration": 8, "job": 7, "risk": 4}
-}
+DATA_FILE = "tasks.json"
 
-def choose_best_country(countries):
-    score = {}
-    for c in countries:
-        score[c] = countries[c]["immigration"] + countries[c]["job"] - countries[c]["risk"]
-    return max(score, key=score.get)
+# 初始化
+if not os.path.exists(DATA_FILE):
+    with open(DATA_FILE, "w") as f:
+        json.dump([], f)
+
+def load_tasks():
+    with open(DATA_FILE, "r") as f:
+        return json.load(f)
+
+def save_tasks(tasks):
+    with open(DATA_FILE, "w") as f:
+        json.dump(tasks, f, indent=4)
 
 # =========================
-# 📋 任务系统（48个月）
-# =========================
-tasks = [
-    {
-        "id": 1,
-        "country": "Germany",
-        "task": "套磁导师",
-        "date": "2026-03-20",
-        "status": "pending",
-        "email": "prof@example.com",
-        "type": "follow_up"
-    },
-    {
-        "id": 2,
-        "country": "Canada",
-        "task": "提交签证",
-        "date": "2026-04-01",
-        "status": "pending",
-        "type": "deadline"
-    },
-    {
-        "id": 3,
-        "country": "Netherlands",
-        "task": "投递简历",
-        "date": "2026-03-22",
-        "status": "pending",
-        "type": "job"
-    }
-]
-
-# =========================
-# 📧 邮件发送
+# 📧 邮件发送函数
 # =========================
 def send_email(to_email, subject, content):
     try:
@@ -63,71 +32,101 @@ def send_email(to_email, subject, content):
 
         with smtplib.SMTP('smtp.gmail.com', 587) as server:
             server.starttls()
-            server.login("your@email.com", "your_password")
+            server.login("your@email.com", "your_app_password")
             server.send_message(msg)
 
-        print(f"📨 邮件已发送: {to_email}")
+        return True
     except Exception as e:
-        print("❌ 邮件发送失败:", e)
+        return str(e)
 
 # =========================
-# 🔔 自动提醒系统
+# 🌍 UI
 # =========================
-def check_tasks(tasks):
-    today = datetime.date.today()
+st.title("🌍 全球48个月规划系统（升级版）")
 
-    for task in tasks:
-        task_date = datetime.datetime.strptime(task["date"], "%Y-%m-%d").date()
-        days_left = (task_date - today).days
+# =========================
+# ➕ 添加任务
+# =========================
+st.header("➕ 添加任务")
 
-        if task["status"] == "done":
-            continue
+with st.form("task_form"):
+    country = st.selectbox("国家", ["Canada", "Germany", "Netherlands", "USA", "Australia"])
+    task_name = st.text_input("任务")
+    date = st.date_input("截止日期")
+    task_type = st.selectbox("类型", ["normal", "email"])
+    email = st.text_input("邮箱（邮件任务用）")
 
-        # ⏰ 提前提醒
-        if days_left <= 2:
-            print(f"⚠️ 即将到期: {task['task']} ({task['country']}) - {task['date']}")
+    submitted = st.form_submit_button("添加")
 
-        # 📧 自动跟进邮件
-        if task["type"] == "follow_up" and days_left <= 0:
-            send_email(
-                task["email"],
-                "Follow-up Reminder",
-                f"Dear Professor,\n\nI would like to follow up on my previous email.\n\nBest regards"
+    if submitted and task_name:
+        tasks = load_tasks()
+        tasks.append({
+            "country": country,
+            "task": task_name,
+            "date": str(date),
+            "status": "pending",
+            "type": task_type,
+            "email": email
+        })
+        save_tasks(tasks)
+        st.success("✅ 添加成功")
+
+# =========================
+# 📊 显示任务
+# =========================
+st.header("📊 当前任务")
+
+tasks = load_tasks()
+today = datetime.date.today()
+
+for i, t in enumerate(tasks):
+    task_date = datetime.datetime.strptime(t["date"], "%Y-%m-%d").date()
+    days_left = (task_date - today).days
+
+    st.divider()
+    st.subheader(f"{t['country']} - {t['task']}")
+
+    # ⏰ 提醒
+    if days_left <= 0:
+        st.error(f"❗ 已到期：{t['date']}")
+    elif days_left <= 2:
+        st.warning(f"⚠️ 即将到期：{t['date']}")
+    else:
+        st.write(f"📅 截止日期：{t['date']}")
+
+    # 状态
+    new_status = st.selectbox(
+        "状态",
+        ["pending", "doing", "done"],
+        index=["pending", "doing", "done"].index(t["status"]),
+        key=f"status_{i}"
+    )
+
+    if new_status != t["status"]:
+        tasks[i]["status"] = new_status
+        save_tasks(tasks)
+
+    # 📧 邮件功能
+    if t["type"] == "email" and t["email"]:
+        if st.button(f"📧 发送跟进邮件 #{i}"):
+            result = send_email(
+                t["email"],
+                "Follow-up",
+                f"Dear Professor,\n\nI would like to follow up on my previous email regarding {t['task']}.\n\nBest regards"
             )
-            task["status"] = "done"
+            if result == True:
+                st.success("邮件发送成功")
+            else:
+                st.error(result)
 
 # =========================
-# 🔄 状态更新
+# 🗑️ 删除
 # =========================
-def update_task_status(task_id, new_status):
-    for task in tasks:
-        if task["id"] == task_id:
-            task["status"] = new_status
-            print(f"✅ 任务 {task_id} 更新为 {new_status}")
+st.header("🗑️ 删除任务")
 
-# =========================
-# 📊 打印任务面板
-# =========================
-def print_dashboard(tasks):
-    print("\n📊 当前任务状态：")
-    for task in tasks:
-        print(f"[{task['status']}] {task['country']} - {task['task']} - {task['date']}")
-
-# =========================
-# 🚀 主循环（自动运行）
-# =========================
-def run_system():
-    print("🌍 全球规划系统启动...")
-    best = choose_best_country(countries)
-    print(f"🎯 推荐优先国家: {best}")
-
-    while True:
-        print_dashboard(tasks)
-        check_tasks(tasks)
-        time.sleep(86400)  # 每天运行一次
-
-# =========================
-# ▶️ 启动
-# =========================
-if __name__ == "__main__":
-    run_system()
+if len(tasks) > 0:
+    delete_index = st.number_input("输入编号", 0, len(tasks)-1)
+    if st.button("删除"):
+        tasks.pop(delete_index)
+        save_tasks(tasks)
+        st.success("删除成功")
