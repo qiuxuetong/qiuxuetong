@@ -2,7 +2,7 @@ import os
 import json
 import sqlite3
 import smtplib
-from datetime import datetime
+from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from urllib.parse import quote_plus
@@ -18,11 +18,18 @@ load_dotenv()
 # 页面配置
 # =========================
 st.set_page_config(
-    page_title="全球留学智能系统",
+    page_title="全球留学智能平台",
     page_icon="🌍",
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+if "page" not in st.session_state:
+    st.session_state["page"] = "首页"
+if "username" not in st.session_state:
+    st.session_state["username"] = ""
+if "chat_history" not in st.session_state:
+    st.session_state["chat_history"] = []
 
 # =========================
 # 环境变量
@@ -30,6 +37,7 @@ st.set_page_config(
 AI_API_KEY = os.getenv("AI_API_KEY", "")
 AI_BASE_URL = os.getenv("AI_BASE_URL", "").rstrip("/")
 AI_MODEL = os.getenv("AI_MODEL", "")
+
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "")
 
 SMTP_HOST = os.getenv("SMTP_HOST", "")
@@ -38,7 +46,7 @@ SMTP_USER = os.getenv("SMTP_USER", "")
 SMTP_PASS = os.getenv("SMTP_PASS", "")
 SMTP_FROM = os.getenv("SMTP_FROM", SMTP_USER)
 
-DB_PATH = "study_agent.db"
+DB_PATH = "study_product.db"
 
 # =========================
 # 样式
@@ -46,147 +54,208 @@ DB_PATH = "study_agent.db"
 st.markdown("""
 <style>
 :root {
-    --bg: #f6f8fc;
+    --bg: #f5f7fb;
     --card: #ffffff;
-    --line: #e7ebf3;
-    --text: #1f2a44;
+    --line: #e7ecf5;
+    --text: #1b2559;
     --muted: #6b7280;
     --brand: #315efb;
-    --brand2: #6b7cff;
-    --ok: #15a34a;
+    --brand2: #5b7cff;
+    --ok: #16a34a;
     --warn: #d97706;
     --danger: #dc2626;
 }
 
-html, body, [class*="css"]  {
+html, body, [class*="css"] {
     font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
 .stApp {
-    background: linear-gradient(180deg, #f7f9ff 0%, #f6f8fc 100%);
-}
-
-.block-card {
-    background: var(--card);
-    border: 1px solid var(--line);
-    border-radius: 18px;
-    padding: 20px 22px;
-    box-shadow: 0 10px 30px rgba(49, 94, 251, 0.06);
-    margin-bottom: 16px;
+    background: linear-gradient(180deg, #f8fbff 0%, #f5f7fb 100%);
 }
 
 .hero {
-    background: linear-gradient(135deg, #315efb 0%, #6b7cff 100%);
+    background: linear-gradient(135deg, #315efb 0%, #5b7cff 100%);
     color: white;
-    border-radius: 24px;
-    padding: 28px 30px;
-    box-shadow: 0 16px 40px rgba(49, 94, 251, 0.22);
-    margin-bottom: 18px;
+    padding: 30px;
+    border-radius: 26px;
+    box-shadow: 0 20px 45px rgba(49,94,251,0.20);
+    margin-bottom: 20px;
 }
 
 .hero h1 {
-    margin: 0 0 8px 0;
-    font-size: 38px;
+    margin: 0 0 10px 0;
+    font-size: 40px;
     font-weight: 800;
 }
 
 .hero p {
     margin: 0;
-    opacity: 0.95;
+    opacity: 0.96;
     font-size: 16px;
+    line-height: 1.7;
+}
+
+.section-title {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--text);
+    margin: 6px 0 14px 0;
+}
+
+.block-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 10px 26px rgba(0,0,0,0.04);
+    margin-bottom: 16px;
+}
+
+.home-card {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    padding: 20px;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.04);
+    min-height: 170px;
+}
+
+.home-card h3 {
+    margin: 0 0 10px 0;
+    color: var(--text);
+    font-size: 22px;
+}
+
+.home-card p {
+    margin: 0;
+    color: var(--muted);
+    line-height: 1.7;
+    font-size: 14px;
+}
+
+.kpi-wrap {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
 }
 
 .kpi {
     background: white;
     border: 1px solid var(--line);
-    border-radius: 18px;
+    border-radius: 20px;
     padding: 18px;
     text-align: center;
-    box-shadow: 0 8px 22px rgba(0,0,0,0.04);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.04);
 }
 
 .kpi .num {
     font-size: 30px;
     font-weight: 800;
     color: var(--brand);
-    margin-bottom: 6px;
 }
 
 .kpi .label {
+    margin-top: 6px;
     font-size: 13px;
     color: var(--muted);
 }
 
-.section-title {
-    font-size: 24px;
-    font-weight: 800;
-    color: var(--text);
+.timeline-box {
+    border-left: 4px solid #c8d4ff;
+    padding-left: 16px;
+    margin-left: 4px;
+}
+
+.timeline-item {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 14px;
+    margin-bottom: 12px;
+}
+
+.timeline-item .time {
+    color: var(--brand);
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+.task-col {
+    background: #f9fbff;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 14px;
+    min-height: 320px;
+}
+
+.task-badge {
+    display: inline-block;
+    background: #edf2ff;
+    color: #315efb;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
     margin-bottom: 10px;
 }
 
-.small-muted {
-    color: var(--muted);
-    font-size: 13px;
+.task-card {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 12px;
+    margin-bottom: 10px;
 }
 
-.module-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 14px;
+.small {
+    color: var(--muted);
+    font-size: 12px;
 }
-.module-card {
+
+.chat-box {
     background: white;
     border: 1px solid var(--line);
     border-radius: 18px;
-    padding: 18px;
-    min-height: 132px;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.04);
-}
-.module-card h4 {
-    margin: 0 0 10px 0;
-    font-size: 18px;
-}
-.module-card p {
-    margin: 0;
-    color: var(--muted);
-    line-height: 1.65;
-    font-size: 14px;
+    padding: 16px;
+    max-height: 540px;
+    overflow-y: auto;
 }
 
-.hr {
-    height: 1px;
-    background: var(--line);
-    margin: 8px 0 18px 0;
+.user-msg {
+    background: #edf2ff;
+    color: #1f3b73;
+    padding: 12px 14px;
+    border-radius: 14px 14px 4px 14px;
+    margin: 10px 0;
 }
 
-.status-ok { color: var(--ok); font-weight: 700; }
-.status-warn { color: var(--warn); font-weight: 700; }
-.status-danger { color: var(--danger); font-weight: 700; }
+.ai-msg {
+    background: #f7f8fb;
+    color: #223;
+    padding: 12px 14px;
+    border-radius: 14px 14px 14px 4px;
+    margin: 10px 0;
+}
 
-div[data-testid="stMetric"] {
+.template-card {
     background: white;
     border: 1px solid var(--line);
-    border-radius: 18px;
-    padding: 14px 16px;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.04);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 10px;
 }
 
 div.stButton > button {
     border-radius: 12px !important;
-    border: 1px solid #dbe3ff !important;
-    background: linear-gradient(180deg, #ffffff 0%, #f8faff 100%) !important;
-    color: #234 !important;
     font-weight: 700 !important;
     min-height: 42px !important;
 }
 
-div.stDownloadButton > button {
-    border-radius: 12px !important;
-}
-
 @media (max-width: 900px) {
-    .module-grid {
-        grid-template-columns: 1fr;
+    .kpi-wrap {
+        grid-template-columns: 1fr 1fr;
     }
 }
 </style>
@@ -261,6 +330,95 @@ CREATE TABLE IF NOT EXISTS tasks (
 conn.commit()
 
 # =========================
+# 内置数据库
+# =========================
+SCHOOL_DB = [
+    {
+        "country": "德国",
+        "name": "Technical University of Munich",
+        "city": "Munich",
+        "level": "顶尖",
+        "tags": ["计算机", "工程", "英语项目", "研究强"],
+        "tuition": "低/公立",
+        "language": "英语/德语"
+    },
+    {
+        "country": "荷兰",
+        "name": "Delft University of Technology",
+        "city": "Delft",
+        "level": "顶尖",
+        "tags": ["工程", "建筑", "计算机", "国际化"],
+        "tuition": "中高",
+        "language": "英语"
+    },
+    {
+        "country": "加拿大",
+        "name": "University of Toronto",
+        "city": "Toronto",
+        "level": "顶尖",
+        "tags": ["综合", "医学", "计算机", "就业强"],
+        "tuition": "高",
+        "language": "英语"
+    },
+    {
+        "country": "比利时",
+        "name": "KU Leuven",
+        "city": "Leuven",
+        "level": "顶尖",
+        "tags": ["综合", "工程", "生物", "欧洲机会"],
+        "tuition": "中",
+        "language": "英语/荷兰语"
+    },
+    {
+        "country": "英国",
+        "name": "University of Edinburgh",
+        "city": "Edinburgh",
+        "level": "强校",
+        "tags": ["AI", "语言", "数据", "国际学生多"],
+        "tuition": "高",
+        "language": "英语"
+    }
+]
+
+VISA_DB = [
+    {"country": "德国", "type": "学生签证", "core": "录取信、资金证明、保险、住宿", "note": "落地后换居留"},
+    {"country": "荷兰", "type": "学生居留", "core": "学校担保、资金、保险、护照", "note": "通常由学校协助"},
+    {"country": "加拿大", "type": "Study Permit", "core": "录取信、资金、体检、护照", "note": "可衔接毕业工签"},
+    {"country": "比利时", "type": "长居学生签", "core": "录取信、资金、保险、无犯罪", "note": "市政厅注册很关键"},
+    {"country": "英国", "type": "Student Visa", "core": "CAS、资金、语言、护照", "note": "毕业可衔接 Graduate Route"}
+]
+
+MENTOR_DB = [
+    {"name": "Prof. Anna Müller", "school": "Technical University of Munich", "field": "AI / Robotics", "email_hint": "lab website"},
+    {"name": "Dr. James Carter", "school": "University of Toronto", "field": "Data Science", "email_hint": "department page"},
+    {"name": "Prof. Sophie Vermeer", "school": "Delft University of Technology", "field": "Computer Vision", "email_hint": "faculty profile"},
+    {"name": "Prof. Luca Janssens", "school": "KU Leuven", "field": "Bioengineering", "email_hint": "research unit page"}
+]
+
+EMAIL_TEMPLATES = [
+    {
+        "name": "导师套磁",
+        "subject": "Prospective Student Inquiry",
+        "body": "Dear Professor,\n\nI hope this email finds you well. My name is ... I am very interested in your research on ...\n\nBest regards,"
+    },
+    {
+        "name": "项目申请咨询",
+        "subject": "Inquiry About Program Application",
+        "body": "Dear Admissions Office,\n\nI am writing to inquire about the application requirements and timeline for your program...\n\nBest regards,"
+    },
+    {
+        "name": "奖学金咨询",
+        "subject": "Inquiry About Scholarship Opportunities",
+        "body": "Dear Sir/Madam,\n\nI would like to ask whether there are scholarship opportunities for international students in ...\n\nBest regards,"
+    },
+    {
+        "name": "邮件跟进",
+        "subject": "Follow-up on Previous Email",
+        "body": "Dear Sir/Madam,\n\nI am writing to kindly follow up on my previous email regarding ...\n\nBest regards,"
+    }
+]
+
+# =========================
 # 工具函数
 # =========================
 def now_str():
@@ -295,16 +453,9 @@ def save_profile(profile: dict):
             SET email=?, education=?, major=?, budget=?, goal=?, countries=?, languages=?, notes=?, updated_at=?
             WHERE username=?
         """, (
-            profile["email"],
-            profile["education"],
-            profile["major"],
-            profile["budget"],
-            profile["goal"],
-            profile["countries"],
-            profile["languages"],
-            profile["notes"],
-            now_str(),
-            profile["username"]
+            profile["email"], profile["education"], profile["major"], profile["budget"],
+            profile["goal"], profile["countries"], profile["languages"], profile["notes"],
+            now_str(), profile["username"]
         ))
     else:
         cursor.execute("""
@@ -312,16 +463,9 @@ def save_profile(profile: dict):
                 username, email, education, major, budget, goal, countries, languages, notes, updated_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            profile["username"],
-            profile["email"],
-            profile["education"],
-            profile["major"],
-            profile["budget"],
-            profile["goal"],
-            profile["countries"],
-            profile["languages"],
-            profile["notes"],
-            now_str()
+            profile["username"], profile["email"], profile["education"], profile["major"],
+            profile["budget"], profile["goal"], profile["countries"], profile["languages"],
+            profile["notes"], now_str()
         ))
     conn.commit()
 
@@ -355,46 +499,47 @@ def save_tasks(username: str, tasks: list, source="agent"):
             username,
             t.get("title", ""),
             t.get("due_date", ""),
-            t.get("status", "pending"),
+            t.get("status", "待办"),
             source,
             now_str()
         ))
     conn.commit()
 
+def update_task_status(task_id: int, status: str):
+    cursor.execute("UPDATE tasks SET status=? WHERE id=?", (status, task_id))
+    conn.commit()
+
 def get_user_plans(username: str):
-    cursor.execute("""
-        SELECT id, title, content, created_at
-        FROM plans WHERE username=?
-        ORDER BY id DESC
-    """, (username,))
+    cursor.execute("SELECT id, title, content, created_at FROM plans WHERE username=? ORDER BY id DESC", (username,))
     return cursor.fetchall()
 
 def get_user_emails(username: str):
-    cursor.execute("""
-        SELECT id, recipient, subject, body, status, created_at
-        FROM emails WHERE username=?
-        ORDER BY id DESC
-    """, (username,))
+    cursor.execute("SELECT id, recipient, subject, body, status, created_at FROM emails WHERE username=? ORDER BY id DESC", (username,))
     return cursor.fetchall()
 
 def get_user_tasks(username: str):
-    cursor.execute("""
-        SELECT id, title, due_date, status, source, created_at
-        FROM tasks WHERE username=?
-        ORDER BY id DESC
-    """, (username,))
+    cursor.execute("SELECT id, title, due_date, status, source, created_at FROM tasks WHERE username=? ORDER BY id DESC", (username,))
     return cursor.fetchall()
 
 def get_user_searches(username: str):
-    cursor.execute("""
-        SELECT id, query, results_json, created_at
-        FROM searches WHERE username=?
-        ORDER BY id DESC
-    """, (username,))
+    cursor.execute("SELECT id, query, results_json, created_at FROM searches WHERE username=? ORDER BY id DESC", (username,))
     return cursor.fetchall()
 
+def get_counts(username):
+    if not username:
+        return 0, 0, 0, 0
+    cursor.execute("SELECT COUNT(*) FROM plans WHERE username=?", (username,))
+    p = cursor.fetchone()[0]
+    cursor.execute("SELECT COUNT(*) FROM tasks WHERE username=?", (username,))
+    t = cursor.fetchone()[0]
+    cursor.execute("SELECT COUNT(*) FROM emails WHERE username=?", (username,))
+    e = cursor.fetchone()[0]
+    cursor.execute("SELECT COUNT(*) FROM searches WHERE username=?", (username,))
+    s = cursor.fetchone()[0]
+    return p, t, e, s
+
 # =========================
-# 联网搜索
+# 搜索
 # =========================
 def search_web_tavily(query: str, max_results=5):
     if not TAVILY_API_KEY:
@@ -427,8 +572,7 @@ def search_web_tavily(query: str, max_results=5):
 def search_web_duckduckgo(query: str, max_results=5):
     try:
         url = f"https://html.duckduckgo.com/html/?q={quote_plus(query)}"
-        headers = {"User-Agent": "Mozilla/5.0"}
-        resp = requests.get(url, headers=headers, timeout=20)
+        resp = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=20)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
         results = []
@@ -444,7 +588,9 @@ def search_web_duckduckgo(query: str, max_results=5):
 
 def search_web(query: str, max_results=5):
     items = search_web_tavily(query, max_results=max_results)
-    return items if items else search_web_duckduckgo(query, max_results=max_results)
+    if items:
+        return items
+    return search_web_duckduckgo(query, max_results=max_results)
 
 # =========================
 # AI
@@ -452,7 +598,6 @@ def search_web(query: str, max_results=5):
 def ai_chat(system_prompt: str, user_prompt: str):
     if not AI_API_KEY or not AI_BASE_URL or not AI_MODEL:
         return None
-
     try:
         resp = requests.post(
             f"{AI_BASE_URL}/chat/completions",
@@ -477,19 +622,12 @@ def ai_chat(system_prompt: str, user_prompt: str):
         return f"[AI调用失败] {e}"
 
 # =========================
-# 规则与 Agent
+# 业务逻辑
 # =========================
 def recommend_countries(profile: dict):
     scores = {
-        "加拿大": 0,
-        "德国": 0,
-        "荷兰": 0,
-        "比利时": 0,
-        "澳大利亚": 0,
-        "英国": 0,
-        "美国": 0
+        "加拿大": 0, "德国": 0, "荷兰": 0, "比利时": 0, "澳大利亚": 0, "英国": 0, "美国": 0
     }
-
     goal = profile.get("goal", "")
     budget = profile.get("budget", "")
     education = profile.get("education", "")
@@ -504,20 +642,23 @@ def recommend_countries(profile: dict):
         scores["荷兰"] += 2
         scores["英国"] += 2
         scores["美国"] += 3
-    if "低" in budget:
+    if budget == "低":
         scores["德国"] += 4
         scores["比利时"] += 2
+    elif budget == "中":
+        scores["荷兰"] += 1
+        scores["加拿大"] += 1
     else:
         scores["英国"] += 1
         scores["美国"] += 1
         scores["澳大利亚"] += 1
-    if "本科" in education:
+    if education == "本科":
         scores["加拿大"] += 2
         scores["荷兰"] += 1
-    if "硕士" in education:
+    elif education == "硕士":
         scores["德国"] += 1
         scores["荷兰"] += 1
-    if "博士" in education:
+    elif education == "博士":
         scores["德国"] += 2
         scores["比利时"] += 1
     if "德" in languages:
@@ -530,116 +671,118 @@ def recommend_countries(profile: dict):
 
     return sorted(scores.items(), key=lambda x: x[1], reverse=True)[:3]
 
-def fallback_plan(profile: dict, searches: list):
-    ranked = recommend_countries(profile)
-    country_text = "、".join([c[0] for c in ranked]) if ranked else "待分析"
-    refs = "\n".join([f"- {r['title']} {r['url']}" for r in searches[:5]]) if searches else "暂无"
+def build_timeline(country: str):
+    return [
+        {"time": "0-3个月", "task": f"确定 {country} 为主申方向，整理学历材料、语言计划和预算。"},
+        {"time": "3-6个月", "task": "完成学校筛选、导师检索、官网信息收集和申请清单。"},
+        {"time": "6-12个月", "task": "提交申请，跟进邮件，准备签证和住宿。"},
+        {"time": "12-18个月", "task": "落地后完成注册、居留、医保、银行卡、电话卡和基础生活配置。"},
+        {"time": "18-36个月", "task": "尽快做实习、科研、项目和本地人脉积累。"},
+        {"time": "36-48个月", "task": "冲刺毕业就业、工签/蓝卡/长期身份路径。"},
+    ]
 
+def build_kanban_tasks():
+    return [
+        {"title": "整理成绩单、护照、简历", "due_date": "本周", "status": "待办"},
+        {"title": "建立学校/导师/签证表", "due_date": "3天内", "status": "进行中"},
+        {"title": "完成第一封联系邮件", "due_date": "7天内", "status": "待办"},
+        {"title": "检查住宿和保险方案", "due_date": "本周", "status": "待办"},
+        {"title": "开始找实习/项目机会", "due_date": "本月", "status": "已完成"},
+    ]
+
+def fallback_plan(profile: dict, web_results: list):
+    ranked = recommend_countries(profile)
+    country = ranked[0][0] if ranked else "待分析"
+    refs = "\n".join([f"- {x['title']} {x['url']}" for x in web_results[:5]]) if web_results else "暂无联网结果"
     return f"""
-# 个性化留学全流程规划
+# 留学全流程方案
 
 ## 推荐国家
-{country_text}
+首选：{country}
 
-## 申请与材料
-- 明确主申国家和保底国家
-- 建立学校、导师、官网和截止日期表
-- 整理成绩单、语言成绩、简历、推荐信、文书
+## 申请阶段
+- 先锁定主申国家与保底国家
+- 建立学校和导师清单
+- 同步准备成绩单、简历、语言成绩、推荐信、文书
 
 ## 签证与身份
-- 收集官方签证页面
-- 准备资金、保险、住宿、录取相关证明
-- 记录签证预约和补材料节点
+- 优先查看官方签证说明
+- 准备资金、保险、住宿和预约材料
+- 记录关键时间节点
 
 ## 落地生活
-- 提前找住宿
-- 办银行卡、电话卡、医保
-- 熟悉求医、超市、交通与安全规则
+- 提前准备租房、医保、电话卡、交通、银行卡
+- 熟悉看病流程、药店、超市和治安信息
 
 ## 就业与长期发展
-- 从入学开始准备实习和简历
-- 毕业前 6-12 个月开始求职
-- 提前规划工签、蓝卡、长期居留或永居路径
+- 入学即开始规划实习
+- 毕业前 6-12 个月系统投递
+- 提前评估毕业工签、蓝卡、长期居留
 
 ## 联网参考
 {refs}
 """.strip()
 
-def build_tasks_from_plan():
-    return [
-        {"title": "建立学校/导师/签证/租房数据库", "due_date": "本周", "status": "pending"},
-        {"title": "整理语言成绩、成绩单、护照和简历", "due_date": "3天内", "status": "pending"},
-        {"title": "搜索目标国家签证、住宿、医保官网", "due_date": "3天内", "status": "pending"},
-        {"title": "完成第一版文书与邮件模板", "due_date": "7天内", "status": "pending"},
-        {"title": "开始导师/项目联络与跟进", "due_date": "7天内", "status": "pending"},
-    ]
-
 def run_agent(username: str, profile: dict, user_goal: str):
     logs = []
     queries = [
-        f"{profile.get('major', '')} study opportunities {profile.get('countries', '')}",
+        f"{profile.get('major', '')} {profile.get('countries', '')} university programs",
         f"{profile.get('countries', '')} student visa official site",
         f"{profile.get('countries', '')} student accommodation guide",
-        f"{profile.get('countries', '')} health insurance international students",
+        f"{profile.get('countries', '')} international student health insurance",
         f"{profile.get('countries', '')} jobs for {profile.get('major', '')}"
     ]
-
     web_results = []
     for q in queries:
         items = search_web(q, max_results=3)
         web_results.extend(items)
-        logs.append(f"搜索：{q} -> {len(items)} 条")
+        logs.append(f"搜索: {q} -> {len(items)} 条")
 
     save_search(username, " | ".join(queries), web_results)
 
     system_prompt = """
-你是全球留学、签证、落地生活和长期身份规划专家。
-请根据用户背景和联网结果，输出一份周到全面的中文规划。
+你是全球留学、签证、落地生活、就业与长期身份规划顾问。
+请根据用户背景和联网结果，生成周到全面的中文规划。
 必须覆盖：
-1. 国家和学校策略
-2. 导师/官网/申请路径
+1. 国家与学校策略
+2. 导师与官网信息获取方式
 3. 签证与身份
 4. 租房、求医、保险、购物、交通
-5. 邮件联络策略
-6. 实习、就业、长期身份
-7. 本周任务
-8. 风险提醒
+5. 就业和长期发展
+6. 本周任务
+7. 风险提醒
 """.strip()
 
     user_prompt = f"""
 用户画像：
 {json.dumps(profile, ensure_ascii=False)}
 
-用户目标：
+用户需求：
 {user_goal}
 
 联网信息：
-{json.dumps(web_results[:12], ensure_ascii=False)}
+{json.dumps(web_results[:10], ensure_ascii=False)}
 """.strip()
 
     plan = ai_chat(system_prompt, user_prompt)
     if not plan or str(plan).startswith("[AI调用失败]"):
         plan = fallback_plan(profile, web_results)
-        logs.append("AI 不可用，使用本地规划")
+        logs.append("AI 不可用，改用本地规划")
 
-    title = f"智能规划 - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
-    save_plan(username, title, plan)
+    save_plan(username, f"正式规划 - {datetime.now().strftime('%Y-%m-%d %H:%M')}", plan)
 
-    tasks = build_tasks_from_plan()
+    tasks = build_kanban_tasks()
     save_tasks(username, tasks, source="agent")
 
     return plan, logs, web_results, tasks
 
-# =========================
-# 邮件
-# =========================
 def build_email_draft(profile: dict, recipient_name: str, recipient_email: str, purpose: str):
     subject = f"{profile.get('education', '')}申请咨询 - {profile.get('major', '')} - {purpose}"
     base = f"""Dear {recipient_name or "Sir/Madam"},
 
 I hope this email finds you well.
 
-My name is {profile.get("username", "")}. I am currently planning my overseas study/career path in {profile.get("major", "")}. My current stage is {profile.get("education", "")}, and my goal is {profile.get("goal", "")}.
+My name is {profile.get("username", "")}. I am currently preparing for my overseas study and career plan in {profile.get("major", "")}. My current stage is {profile.get("education", "")}, and my goal is {profile.get("goal", "")}.
 
 I am writing to ask about {purpose}. I would be grateful if you could share any relevant information regarding requirements, timeline, funding, or recommended preparation steps.
 
@@ -651,16 +794,25 @@ Email: {profile.get("email", "")}
 """.strip()
 
     improved = ai_chat(
-        "You are an expert academic email writer. Improve the email and keep it concise, natural and professional.",
-        f"Profile: {json.dumps(profile, ensure_ascii=False)}\nRecipient:{recipient_name} <{recipient_email}>\nPurpose:{purpose}\nDraft:\n{base}"
+        "You are an expert education email writer. Improve the draft and keep it concise and professional.",
+        f"Profile:{json.dumps(profile, ensure_ascii=False)}\nRecipient:{recipient_name} <{recipient_email}>\nPurpose:{purpose}\nDraft:\n{base}"
     )
     body = improved if improved and not str(improved).startswith("[AI调用失败]") else base
     return subject, body
 
+def build_followup_email(original_subject: str):
+    return f"Follow-up: {original_subject}", """Dear Sir/Madam,
+
+I hope you are well.
+
+I am writing to kindly follow up on my previous email. I would appreciate any update when convenient.
+
+Best regards,
+"""
+
 def send_email(recipient: str, subject: str, body: str):
     if not (SMTP_HOST and SMTP_USER and SMTP_PASS and SMTP_FROM):
         return False, "SMTP 未配置完整"
-
     try:
         msg = MIMEMultipart()
         msg["From"] = SMTP_FROM
@@ -678,12 +830,12 @@ def send_email(recipient: str, subject: str, body: str):
         return False, f"发送失败: {e}"
 
 # =========================
-# 顶部欢迎区
+# 顶部
 # =========================
 st.markdown("""
 <div class="hero">
-    <h1>🌍 全球留学智能系统</h1>
-    <p>联网搜索、学校与签证信息整合、邮件唤起、AI Agent 规划、任务分解、长期发展路径，一站式完成。</p>
+    <h1>🌍 全球留学智能平台</h1>
+    <p>更像正式产品首页的版本：学校库、签证库、导师库、任务看板、时间线规划、AI 顾问、邮件模板和 follow-up 自动化，全部整合在一个页面系统里。</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -691,102 +843,94 @@ st.markdown("""
 # 侧边栏
 # =========================
 with st.sidebar:
-    st.markdown("## 控制台")
+    st.markdown("## 平台控制台")
     username_input = st.text_input("用户名", value=st.session_state.get("username", ""))
     if st.button("载入用户"):
         if username_input.strip():
             st.session_state["username"] = username_input.strip()
-            st.success(f"已载入：{username_input.strip()}")
+            st.success(f"当前用户：{username_input.strip()}")
         else:
             st.warning("请输入用户名")
 
     current_user = st.session_state.get("username", "")
 
     st.markdown("---")
-    st.markdown("### 状态")
     st.write(f"当前用户：{current_user or '未设置'}")
     st.write(f"AI：{'已配置' if AI_API_KEY and AI_BASE_URL and AI_MODEL else '未配置'}")
     st.write(f"搜索：{'Tavily' if TAVILY_API_KEY else 'DuckDuckGo 简易模式'}")
     st.write(f"邮件：{'已配置 SMTP' if SMTP_HOST and SMTP_USER and SMTP_PASS else '未配置'}")
 
     st.markdown("---")
-    page = st.radio(
-        "页面导航",
-        ["总览", "个人画像", "联网搜索", "AI规划", "邮件中心", "任务中心", "历史中心"]
-    )
+    page_options = ["首页", "个人画像", "学校库", "签证库", "导师库", "任务看板", "时间线规划", "AI顾问", "邮件中心", "历史中心"]
+    sidebar_page = st.radio("页面导航", page_options, index=page_options.index(st.session_state["page"]))
+    st.session_state["page"] = sidebar_page
+    page = st.session_state["page"]
 
 # =========================
-# 数据统计
+# 首页
 # =========================
-def get_counts(username):
-    if not username:
-        return 0, 0, 0, 0
-    cursor.execute("SELECT COUNT(*) FROM plans WHERE username=?", (username,))
-    p = cursor.fetchone()[0]
-    cursor.execute("SELECT COUNT(*) FROM tasks WHERE username=?", (username,))
-    t = cursor.fetchone()[0]
-    cursor.execute("SELECT COUNT(*) FROM emails WHERE username=?", (username,))
-    e = cursor.fetchone()[0]
-    cursor.execute("SELECT COUNT(*) FROM searches WHERE username=?", (username,))
-    s = cursor.fetchone()[0]
-    return p, t, e, s
-
-# =========================
-# 页面：总览
-# =========================
-if page == "总览":
+if page == "首页":
     p_count, t_count, e_count, s_count = get_counts(current_user)
 
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        st.metric("规划总数", p_count)
-    with c2:
-        st.metric("任务总数", t_count)
-    with c3:
-        st.metric("邮件记录", e_count)
-    with c4:
-        st.metric("搜索记录", s_count)
-
-    st.markdown('<div class="section-title">系统模块</div>', unsafe_allow_html=True)
-    st.markdown("""
-    <div class="module-grid">
-        <div class="module-card">
-            <h4>👤 用户画像</h4>
-            <p>记录学历、专业、预算、目标国家、语言能力和长期诉求，作为后续推荐和 Agent 规划的基础。</p>
-        </div>
-        <div class="module-card">
-            <h4>🌐 联网搜索</h4>
-            <p>搜索学校官网、签证规则、住宿、医保、求职和城市信息，尽量减少静态内容的局限。</p>
-        </div>
-        <div class="module-card">
-            <h4>🤖 AI 规划</h4>
-            <p>将用户背景与联网结果整合成一份完整路线图，覆盖申请、签证、生活和就业。</p>
-        </div>
-        <div class="module-card">
-            <h4>✉️ 邮件中心</h4>
-            <p>生成导师、项目方、招生办公室邮件草稿，并可通过 SMTP 直接发送。</p>
-        </div>
-        <div class="module-card">
-            <h4>🗂 任务系统</h4>
-            <p>把规划拆成短期可执行步骤，让用户知道这周、这几天该做什么。</p>
-        </div>
-        <div class="module-card">
-            <h4>📚 历史中心</h4>
-            <p>保存过去的搜索、规划、任务和邮件，形成长期记忆和可追踪档案。</p>
-        </div>
+    st.markdown(f"""
+    <div class="kpi-wrap">
+        <div class="kpi"><div class="num">{p_count}</div><div class="label">规划总数</div></div>
+        <div class="kpi"><div class="num">{t_count}</div><div class="label">任务总数</div></div>
+        <div class="kpi"><div class="num">{e_count}</div><div class="label">邮件记录</div></div>
+        <div class="kpi"><div class="num">{s_count}</div><div class="label">搜索记录</div></div>
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("")
-    left, right = st.columns([1.5, 1])
+    st.markdown('<div class="section-title">产品入口</div>', unsafe_allow_html=True)
+
+    c1, c2, c3 = st.columns(3)
+    c4, c5, c6 = st.columns(3)
+
+    with c1:
+        st.markdown('<div class="home-card"><h3>👤 用户画像</h3><p>填写学历、专业、预算、目标和语言能力，形成后续推荐与 Agent 规划的基础。</p></div>', unsafe_allow_html=True)
+        if st.button("进入 用户画像", use_container_width=True):
+            st.session_state["page"] = "个人画像"
+            st.rerun()
+
+    with c2:
+        st.markdown('<div class="home-card"><h3>🏫 学校库</h3><p>按国家、城市、学科和学费查看适合的学校，快速建立申请池。</p></div>', unsafe_allow_html=True)
+        if st.button("进入 学校库", use_container_width=True):
+            st.session_state["page"] = "学校库"
+            st.rerun()
+
+    with c3:
+        st.markdown('<div class="home-card"><h3>🛂 签证库</h3><p>查看不同国家的学生签、材料重点和落地后身份流程。</p></div>', unsafe_allow_html=True)
+        if st.button("进入 签证库", use_container_width=True):
+            st.session_state["page"] = "签证库"
+            st.rerun()
+
+    with c4:
+        st.markdown('<div class="home-card"><h3>🎓 导师库</h3><p>整理导师方向和入口提示，方便你继续去官网和院系页面核实。</p></div>', unsafe_allow_html=True)
+        if st.button("进入 导师库", use_container_width=True):
+            st.session_state["page"] = "导师库"
+            st.rerun()
+
+    with c5:
+        st.markdown('<div class="home-card"><h3>📋 任务看板</h3><p>把申请、签证、邮件、住宿和就业拆成可执行任务，不再只是看建议。</p></div>', unsafe_allow_html=True)
+        if st.button("进入 任务看板", use_container_width=True):
+            st.session_state["page"] = "任务看板"
+            st.rerun()
+
+    with c6:
+        st.markdown('<div class="home-card"><h3>🤖 AI 顾问</h3><p>结合联网搜索和你的背景，生成更完整的规划与下一步行动建议。</p></div>', unsafe_allow_html=True)
+        if st.button("进入 AI顾问", use_container_width=True):
+            st.session_state["page"] = "AI顾问"
+            st.rerun()
+
+    left, right = st.columns([1.2, 1])
     with left:
         st.markdown('<div class="block-card">', unsafe_allow_html=True)
-        st.markdown("### 适合你的使用顺序")
-        st.write("1. 先创建用户并填写个人画像")
-        st.write("2. 再做联网搜索，收集目标国家和项目资料")
-        st.write("3. 然后运行 AI Agent 生成完整规划")
-        st.write("4. 接着生成邮件草稿，联系学校、导师或招生办公室")
-        st.write("5. 最后在任务中心持续推进")
+        st.markdown("### 推荐使用顺序")
+        st.write("1. 先填写用户画像")
+        st.write("2. 再看学校库、签证库、导师库")
+        st.write("3. 然后运行 AI 顾问生成正式规划")
+        st.write("4. 在邮件中心生成咨询、套磁和 follow-up")
+        st.write("5. 最后到任务看板持续推进")
         st.markdown("</div>", unsafe_allow_html=True)
 
     with right:
@@ -797,19 +941,19 @@ if page == "总览":
         else:
             profile = get_profile(current_user)
             if not profile:
-                st.info("下一步：去“个人画像”填写基本信息。")
+                st.info("下一步：填写用户画像。")
             else:
-                st.success("下一步：去“AI规划”运行 Agent。")
+                st.success("下一步：去 AI 顾问生成正式规划。")
         st.markdown("</div>", unsafe_allow_html=True)
 
 # =========================
-# 页面：个人画像
+# 个人画像
 # =========================
 elif page == "个人画像":
     st.markdown('<div class="section-title">个人画像</div>', unsafe_allow_html=True)
 
     if not current_user:
-        st.warning("请先在左侧输入用户名并载入。")
+        st.warning("请先载入用户。")
     else:
         profile = get_profile(current_user) or {
             "username": current_user,
@@ -820,10 +964,10 @@ elif page == "个人画像":
             "goal": "",
             "countries": "",
             "languages": "",
-            "notes": "",
+            "notes": ""
         }
 
-        left, right = st.columns([1.3, 1])
+        left, right = st.columns([1.2, 1])
 
         with left:
             st.markdown('<div class="block-card">', unsafe_allow_html=True)
@@ -835,7 +979,7 @@ elif page == "个人画像":
                 goal = st.text_input("目标", value=profile["goal"], placeholder="移民 / 就业 / 读博 / 奖学金")
                 countries = st.text_input("目标国家", value=profile["countries"], placeholder="德国, 荷兰, 加拿大")
                 languages = st.text_input("语言能力", value=profile["languages"], placeholder="英语, 德语")
-                notes = st.text_area("补充说明", value=profile["notes"], height=150, placeholder="预算限制、家庭因素、是否接受小语种、是否希望长期留下等")
+                notes = st.text_area("补充说明", value=profile["notes"], height=150)
                 submitted = st.form_submit_button("保存画像")
 
             if submitted:
@@ -858,54 +1002,141 @@ elif page == "个人画像":
             st.markdown("### 推荐国家")
             ranked = recommend_countries(get_profile(current_user) or profile)
             for name, score in ranked:
-                st.write(f"**{name}**  · 评分 {score}")
-            st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
-            st.markdown("### 使用提示")
-            st.write("画像越完整，Agent 的规划越贴近真实需求。")
-            st.write("尤其建议填写：专业、预算、目标、目标国家、语言能力。")
+                st.write(f"**{name}** · 评分 {score}")
             st.markdown("</div>", unsafe_allow_html=True)
 
 # =========================
-# 页面：联网搜索
+# 学校库
 # =========================
-elif page == "联网搜索":
-    st.markdown('<div class="section-title">联网搜索</div>', unsafe_allow_html=True)
+elif page == "学校库":
+    st.markdown('<div class="section-title">学校库</div>', unsafe_allow_html=True)
+
+    country_filter = st.selectbox("按国家筛选", ["全部"] + sorted(list({x["country"] for x in SCHOOL_DB})))
+    keyword = st.text_input("关键词", placeholder="计算机 / AI / 低学费 / 英语项目")
+
+    for s in SCHOOL_DB:
+        if country_filter != "全部" and s["country"] != country_filter:
+            continue
+        if keyword.strip():
+            text = f"{s['name']} {s['city']} {s['level']} {' '.join(s['tags'])} {s['tuition']} {s['language']}"
+            if keyword.lower() not in text.lower():
+                continue
+
+        st.markdown('<div class="block-card">', unsafe_allow_html=True)
+        st.markdown(f"### {s['name']}")
+        st.write(f"国家：{s['country']} ｜ 城市：{s['city']} ｜ 层级：{s['level']}")
+        st.write(f"方向：{', '.join(s['tags'])}")
+        st.write(f"学费：{s['tuition']} ｜ 语言：{s['language']}")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+# =========================
+# 签证库
+# =========================
+elif page == "签证库":
+    st.markdown('<div class="section-title">签证库</div>', unsafe_allow_html=True)
+
+    country_filter = st.selectbox("选择国家", sorted(list({x["country"] for x in VISA_DB})))
+    for v in VISA_DB:
+        if v["country"] != country_filter:
+            continue
+        st.markdown('<div class="block-card">', unsafe_allow_html=True)
+        st.markdown(f"### {v['country']} - {v['type']}")
+        st.write(f"核心材料：{v['core']}")
+        st.write(f"说明：{v['note']}")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+# =========================
+# 导师库
+# =========================
+elif page == "导师库":
+    st.markdown('<div class="section-title">导师库</div>', unsafe_allow_html=True)
+
+    keyword = st.text_input("按方向或学校搜索导师", placeholder="AI / Data / KU Leuven")
+    for m in MENTOR_DB:
+        text = f"{m['name']} {m['school']} {m['field']}"
+        if keyword.strip() and keyword.lower() not in text.lower():
+            continue
+        st.markdown('<div class="block-card">', unsafe_allow_html=True)
+        st.markdown(f"### {m['name']}")
+        st.write(f"学校：{m['school']}")
+        st.write(f"方向：{m['field']}")
+        st.write(f"邮箱线索：{m['email_hint']}")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+# =========================
+# 任务看板
+# =========================
+elif page == "任务看板":
+    st.markdown('<div class="section-title">任务看板</div>', unsafe_allow_html=True)
 
     if not current_user:
         st.warning("请先载入用户。")
     else:
-        st.markdown('<div class="block-card">', unsafe_allow_html=True)
-        query = st.text_input("输入搜索问题", placeholder="例如：德国计算机硕士申请官网 / 比利时学生租房指南 / Canada international student health insurance")
-        c1, c2 = st.columns([1, 3])
-        with c1:
-            do_search = st.button("开始搜索")
-        with c2:
-            st.caption("建议直接搜官网、签证、住宿、保险、就业、导师主页等。")
+        rows = get_user_tasks(current_user)
+        if not rows:
+            st.info("暂无任务。先去 AI 顾问生成任务。")
+        else:
+            todo = [r for r in rows if r[3] == "待办"]
+            doing = [r for r in rows if r[3] == "进行中"]
+            done = [r for r in rows if r[3] == "已完成"]
 
-        if do_search:
-            if not query.strip():
-                st.warning("请输入搜索内容。")
-            else:
-                with st.spinner("正在联网搜索..."):
-                    results = search_web(query, max_results=8)
-                    save_search(current_user, query, results)
+            c1, c2, c3 = st.columns(3)
+            for col, title, items in [(c1, "待办", todo), (c2, "进行中", doing), (c3, "已完成", done)]:
+                with col:
+                    st.markdown('<div class="task-col">', unsafe_allow_html=True)
+                    st.markdown(f'<div class="task-badge">{title}</div>', unsafe_allow_html=True)
+                    if not items:
+                        st.caption("暂无")
+                    for r in items:
+                        st.markdown(f"""
+                        <div class="task-card">
+                            <strong>{r[1]}</strong><br>
+                            <span class="small">截止：{r[2]} ｜ 来源：{r[4]}</span>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        new_status = st.selectbox(
+                            f"更新状态 #{r[0]}",
+                            ["待办", "进行中", "已完成"],
+                            index=["待办", "进行中", "已完成"].index(r[3]),
+                            key=f"task_status_{r[0]}"
+                        )
+                        if new_status != r[3]:
+                            update_task_status(r[0], new_status)
+                            st.rerun()
+                    st.markdown("</div>", unsafe_allow_html=True)
 
-                st.success(f"已获取 {len(results)} 条结果")
-                for i, item in enumerate(results, 1):
-                    with st.container():
-                        st.markdown(f"**{i}. {item['title']}**")
-                        if item.get("url"):
-                            st.write(item["url"])
-                        if item.get("content"):
-                            st.caption(item["content"])
-                        st.markdown("---")
+# =========================
+# 时间线规划
+# =========================
+elif page == "时间线规划":
+    st.markdown('<div class="section-title">时间线规划</div>', unsafe_allow_html=True)
+
+    if not current_user:
+        st.warning("请先载入用户。")
+    else:
+        profile = get_profile(current_user)
+        country = "加拿大"
+        if profile:
+            ranked = recommend_countries(profile)
+            if ranked:
+                country = ranked[0][0]
+
+        timeline = build_timeline(country)
+        st.markdown('<div class="timeline-box">', unsafe_allow_html=True)
+        for item in timeline:
+            st.markdown(f"""
+            <div class="timeline-item">
+                <div class="time">{item['time']}</div>
+                <div>{item['task']}</div>
+            </div>
+            """, unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
 # =========================
-# 页面：AI规划
+# AI顾问
 # =========================
-elif page == "AI规划":
-    st.markdown('<div class="section-title">AI Agent 规划</div>', unsafe_allow_html=True)
+elif page == "AI顾问":
+    st.markdown('<div class="section-title">AI 顾问</div>', unsafe_allow_html=True)
 
     if not current_user:
         st.warning("请先载入用户。")
@@ -918,49 +1149,55 @@ elif page == "AI规划":
 
             with left:
                 st.markdown('<div class="block-card">', unsafe_allow_html=True)
+                st.markdown("### 正式规划生成")
                 agent_goal = st.text_area(
-                    "告诉系统你要什么",
-                    value="请基于我的背景，联网搜索并给我一份从申请、签证、租房、求医、购物到就业和长期身份的全面周到规划。",
-                    height=120
+                    "你的需求",
+                    value="请基于我的背景，联网整合学校、签证、导师、租房、求医、购物、就业和长期身份信息，给我一份周到全面的正式规划。",
+                    height=110
                 )
-                run = st.button("运行智能 Agent")
+                if st.button("运行 AI 顾问"):
+                    with st.spinner("AI 顾问正在工作..."):
+                        plan, logs, web_results, tasks = run_agent(current_user, profile, agent_goal)
+                    st.session_state["latest_plan"] = plan
+                    st.session_state["latest_logs"] = logs
+                    st.session_state["latest_results"] = web_results
+                    st.session_state["latest_tasks"] = tasks
+                    st.success("已生成正式规划")
                 st.markdown("</div>", unsafe_allow_html=True)
 
-                if run:
-                    with st.spinner("Agent 正在工作..."):
-                        plan, logs, web_results, tasks = run_agent(current_user, profile, agent_goal)
-
+                if st.session_state.get("latest_plan"):
                     st.markdown('<div class="block-card">', unsafe_allow_html=True)
-                    st.markdown("### 规划结果")
-                    st.markdown(plan)
-                    st.markdown("</div>", unsafe_allow_html=True)
-
-                    st.markdown('<div class="block-card">', unsafe_allow_html=True)
-                    st.markdown("### 本次生成的任务")
-                    for t in tasks:
-                        st.write(f"- {t['title']} ｜ {t['due_date']} ｜ {t['status']}")
-                    st.markdown("</div>", unsafe_allow_html=True)
-
-                    st.markdown('<div class="block-card">', unsafe_allow_html=True)
-                    st.markdown("### Agent 日志")
-                    for line in logs:
-                        st.code(line)
+                    st.markdown("### 正式规划")
+                    st.markdown(st.session_state["latest_plan"])
                     st.markdown("</div>", unsafe_allow_html=True)
 
             with right:
                 st.markdown('<div class="block-card">', unsafe_allow_html=True)
-                st.markdown("### 当前画像摘要")
-                st.write(f"用户：{profile.get('username', '')}")
-                st.write(f"阶段：{profile.get('education', '')}")
-                st.write(f"专业：{profile.get('major', '')}")
-                st.write(f"预算：{profile.get('budget', '')}")
-                st.write(f"目标：{profile.get('goal', '')}")
-                st.write(f"国家：{profile.get('countries', '')}")
-                st.write(f"语言：{profile.get('languages', '')}")
+                st.markdown("### AI 对话区")
+                st.markdown('<div class="chat-box">', unsafe_allow_html=True)
+                for role, content in st.session_state["chat_history"]:
+                    if role == "user":
+                        st.markdown(f'<div class="user-msg">{content}</div>', unsafe_allow_html=True)
+                    else:
+                        st.markdown(f'<div class="ai-msg">{content}</div>', unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
+
+                user_q = st.text_area("继续追问 AI 顾问", height=100, placeholder="例如：我预算低，德语弱，想尽快留下来，该怎么选？")
+                if st.button("发送问题"):
+                    if user_q.strip():
+                        st.session_state["chat_history"].append(("user", user_q.strip()))
+                        answer = ai_chat(
+                            "你是全球留学和长期发展顾问，请用中文提供具体可执行建议。",
+                            f"用户画像：{json.dumps(profile, ensure_ascii=False)}\n问题：{user_q.strip()}"
+                        )
+                        if not answer:
+                            answer = "当前 AI 未配置，无法回答。"
+                        st.session_state["chat_history"].append(("ai", answer))
+                        st.rerun()
                 st.markdown("</div>", unsafe_allow_html=True)
 
 # =========================
-# 页面：邮件中心
+# 邮件中心
 # =========================
 elif page == "邮件中心":
     st.markdown('<div class="section-title">邮件中心</div>', unsafe_allow_html=True)
@@ -972,37 +1209,53 @@ elif page == "邮件中心":
         if not profile:
             st.warning("请先填写个人画像。")
         else:
-            left, right = st.columns([1.1, 1.2])
+            left, right = st.columns([1, 1.2])
 
             with left:
                 st.markdown('<div class="block-card">', unsafe_allow_html=True)
-                recipient_name = st.text_input("收件人姓名", placeholder="Professor Smith / Admissions Office")
-                recipient_email = st.text_input("收件人邮箱", placeholder="example@university.edu")
-                purpose = st.text_input("邮件目的", placeholder="申请咨询 / 套磁 / 奖学金咨询 / follow-up")
+                st.markdown("### 模板库")
+                template_names = [x["name"] for x in EMAIL_TEMPLATES]
+                chosen = st.selectbox("选择模板", template_names)
+                tpl = next(x for x in EMAIL_TEMPLATES if x["name"] == chosen)
+                st.write(f"主题模板：{tpl['subject']}")
+                st.text(tpl["body"])
+
+                recipient_name = st.text_input("收件人姓名")
+                recipient_email = st.text_input("收件人邮箱")
+                purpose = st.text_input("邮件目的", value=chosen)
+
                 if st.button("生成邮件草稿"):
-                    if not recipient_email or not purpose:
-                        st.warning("请填写收件人邮箱和邮件目的。")
-                    else:
-                        subject, body = build_email_draft(profile, recipient_name, recipient_email, purpose)
-                        st.session_state["draft_subject"] = subject
-                        st.session_state["draft_body"] = body
-                        st.success("草稿已生成")
+                    subject, body = build_email_draft(profile, recipient_name, recipient_email, purpose)
+                    st.session_state["draft_subject"] = subject
+                    st.session_state["draft_body"] = body
+                    st.success("已生成草稿")
+                st.markdown("</div>", unsafe_allow_html=True)
+
+                st.markdown('<div class="block-card">', unsafe_allow_html=True)
+                st.markdown("### Follow-up 自动化")
+                original_subject = st.text_input("原邮件主题", placeholder="Inquiry About Program Application")
+                if st.button("生成 Follow-up"):
+                    sub, body = build_followup_email(original_subject or "Previous Email")
+                    st.session_state["draft_subject"] = sub
+                    st.session_state["draft_body"] = body
+                    st.success("已生成 follow-up 草稿")
                 st.markdown("</div>", unsafe_allow_html=True)
 
             with right:
                 st.markdown('<div class="block-card">', unsafe_allow_html=True)
-                draft_subject = st.text_input("主题", value=st.session_state.get("draft_subject", ""))
-                draft_body = st.text_area("正文", value=st.session_state.get("draft_body", ""), height=280)
+                st.markdown("### 编辑与发送")
+                subject = st.text_input("主题", value=st.session_state.get("draft_subject", ""))
+                body = st.text_area("正文", value=st.session_state.get("draft_body", ""), height=320)
 
                 c1, c2 = st.columns(2)
                 with c1:
                     if st.button("保存草稿"):
-                        save_email(current_user, recipient_email, draft_subject, draft_body, "draft")
+                        save_email(current_user, recipient_email, subject, body, "draft")
                         st.success("草稿已保存")
                 with c2:
                     if st.button("发送邮件"):
-                        ok, msg = send_email(recipient_email, draft_subject, draft_body)
-                        save_email(current_user, recipient_email, draft_subject, draft_body, "sent" if ok else "failed")
+                        ok, msg = send_email(recipient_email, subject, body)
+                        save_email(current_user, recipient_email, subject, body, "sent" if ok else "failed")
                         if ok:
                             st.success(msg)
                         else:
@@ -1010,28 +1263,7 @@ elif page == "邮件中心":
                 st.markdown("</div>", unsafe_allow_html=True)
 
 # =========================
-# 页面：任务中心
-# =========================
-elif page == "任务中心":
-    st.markdown('<div class="section-title">任务中心</div>', unsafe_allow_html=True)
-
-    if not current_user:
-        st.warning("请先载入用户。")
-    else:
-        rows = get_user_tasks(current_user)
-
-        st.markdown('<div class="block-card">', unsafe_allow_html=True)
-        if not rows:
-            st.info("暂无任务。先去运行 AI Agent。")
-        else:
-            for row in rows:
-                st.write(f"**#{row[0]}**｜{row[1]}")
-                st.caption(f"截止：{row[2]} ｜ 状态：{row[3]} ｜ 来源：{row[4]} ｜ 创建于：{row[5]}")
-                st.markdown("---")
-        st.markdown("</div>", unsafe_allow_html=True)
-
-# =========================
-# 页面：历史中心
+# 历史中心
 # =========================
 elif page == "历史中心":
     st.markdown('<div class="section-title">历史中心</div>', unsafe_allow_html=True)
