@@ -1,50 +1,96 @@
 import streamlit as st
 import google.generativeai as genai
 from PyPDF2 import PdfReader
-import urllib.parse  # 新增：用于处理网页链接
+import urllib.parse
 
 # 1. 核心初始化
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 model = genai.GenerativeModel('gemini-2.5-flash')
 
 # 2. 页面配置
-st.set_page_config(page_title="求学通-全能留学助手", layout="wide")
-st.title("🎓 求学通：博士申请与海外生活全能系统")
+st.set_page_config(page_title="求学通-全球留学全能管家", layout="wide")
+st.title("🎓 求学通：博士申请、海外生存与生活品质全能系统")
 
-# 3. 标签页
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "🎯 导师匹配", "🏠 落地与实时搜索", "📄 简历润色", "✉️ 陶瓷信生成", "🤖 模拟面试"
+# 3. 创建七大功能标签页
+tabs = st.tabs([
+    "🎯 导师匹配", 
+    "🏠 落地生存", 
+    "📄 简历润色", 
+    "✉️ 陶瓷信生成",
+    "🤖 模拟面试",
+    "💼 就业居留",
+    "🍎 健康饮食与生活"
 ])
 
-# --- Tab 2: 落地生活与实时直达 (重点升级！) ---
-with tab2:
-    st.header("📍 落地生活指南 & 实时信息传送门")
-    city = st.text_input("输入你的目标城市 (如: London, Boston, Munich):", key="city_input")
-    
+# --- Tab 1: 导师匹配 ---
+with tabs[0]:
+    st.header("🔍 全球导师极速匹配")
+    keywords = st.text_input("研究方向 (如: NLP):", key="t1")
+    if st.button("🚀 寻找导师", key="b1"):
+        with st.spinner("检索中..."):
+            st.markdown(model.generate_content(f"Find 3 professors in {keywords}.").text)
+
+# --- Tab 2: 落地与实时搜索 ---
+with tabs[1]:
+    st.header("📍 落地生活传送门")
+    city = st.text_input("目标城市:", key="t2")
     if city:
-        # 预先编码城市名，用于生成链接
         encoded_city = urllib.parse.quote(city)
-        
-        st.write(f"### 🔗 {city} 实时信息直达")
-        c1, c2, c3, c4 = st.columns(4)
-        with c1:
-            st.link_button("📕 小红书搜索", f"https://www.xiaohongshu.com/search_result?keyword={encoded_city}留学落地")
-        with c2:
-            st.link_button("🏠 实时房源 (Rightmove)", f"https://www.rightmove.co.uk/property-to-rent/find.html?searchLocation={encoded_city}")
-        with c3:
-            st.link_button("🏦 银行开户指南", f"https://www.google.com/search?q={encoded_city}+student+bank+account+comparison")
-        with c4:
-            st.link_button("🛂 签证官方入口", "https://www.gov.uk/browse/visas-immigration/student-visas")
+        c1, c2, c3 = st.columns(3)
+        with c1: st.link_button("📕 小红书经验", f"https://www.xiaohongshu.com/search_result?keyword={encoded_city}留学落地")
+        with c2: st.link_button("🏠 实时房源", f"https://www.rightmove.co.uk/property-to-rent/find.html?searchLocation={encoded_city}")
+        with c3: st.link_button("🛂 签证官方", "https://www.gov.uk/browse/visas-immigration/student-visas")
+        if st.button("🧠 获取 AI 指南", key="b2"):
+            st.markdown(model.generate_content(f"Survival guide for {city}").text)
 
-        st.divider()
-        
-        # AI 深度分析部分
-        needs = st.multiselect("需要 AI 为你分析哪些细节？", ["办理流程", "物价评价", "安全区域建议", "超市分布"], default=["办理流程", "安全区域建议"])
-        if st.button("🧠 获取 AI 深度建议"):
-            with st.spinner("AI 正在结合经验为你分析..."):
-                prompt = f"Provide detailed student advice for {city} focusing on {needs}. Include common pitfalls and pro-tips."
-                st.markdown(model.generate_content(prompt).text)
-    else:
-        st.info("👆 请先输入城市名称，我们将为你生成专属的直达链接和 AI 指南。")
+# --- Tab 3: 简历润色 ---
+with tabs[2]:
+    st.header("📄 CV 深度诊断")
+    up_file = st.file_uploader("上传 PDF", type="pdf", key="t3")
+    if st.button("✨ 开启润色", key="b3") and up_file:
+        reader = PdfReader(up_file)
+        text = "".join([p.extract_text() for p in reader.pages])
+        st.markdown(model.generate_content(f"Refine this CV: {text}").text)
 
-# (其他 Tab 1, 3, 4, 5 保持之前的逻辑即可...)
+# --- Tab 4: 陶瓷信生成 ---
+with tabs[3]:
+    st.header("✉️ 陶瓷信自动生成")
+    p_name = st.text_input("导师姓名:", key="t4_n")
+    my_bg = st.text_area("你的亮点:", key="t4_b")
+    if st.button("✍️ 生成邮件草稿", key="b4"):
+        st.code(model.generate_content(f"Write PhD email to {p_name} background {my_bg}").text)
+
+# --- Tab 5: 模拟面试 ---
+with tabs[4]:
+    st.header("🤖 AI 模拟面试官")
+    if st.button("🏁 开始面试挑战", key="b5"):
+        st.markdown(model.generate_content("Generate 5 PhD interview questions.").text)
+
+# --- Tab 6: 就业与长期居留 ---
+with tabs[5]:
+    st.header("💼 就业与长期居留规划")
+    target_country = st.selectbox("选择国家:", ["英国", "美国", "德国", "加拿大", "澳洲"], key="t6")
+    if st.button("📈 生成路径报告", key="b6"):
+        st.markdown(model.generate_content(f"Roadmap to job and PR in {target_country} for PhD").text)
+
+# --- Tab 7: 留学健康饮食与生活 (新增！) ---
+with tabs[6]:
+    st.header("🍎 留学生活品质：饮食、购物与旅行")
+    col_a, col_b = st.columns([1, 2])
+    with col_a:
+        current_city = st.text_input("输入当前所在/目标城市:", key="t7_city")
+        service = st.radio("你想发现什么？", ["健康饮食 (中餐/亚超/健康菜谱)", "购物商场 (Outlets/折扣超市)", "旅游打卡 (周末游/短途旅行)"])
+    
+    if st.button("🌟 开启高品质生活", key="b7"):
+        if current_city:
+            with st.spinner("AI 正在为您搜罗本地生活资讯..."):
+                lifestyle_prompt = f"""
+                Provide a lifestyle guide for a Chinese student in {current_city} focusing on {service}.
+                If Diet: Mention Asian supermarkets, authentic Chinese food spots, and healthy cooking tips for busy students.
+                If Shopping: Mention local affordable supermarkets, premium shopping malls, and best outlet nearby.
+                If Travel: List 3 nearby 'must-visit' spots for a weekend trip.
+                Format with emojis and friendly tone.
+                """
+                st.markdown(model.generate_content(lifestyle_prompt).text)
+        else:
+            st.warning("请先输入城市名称")
